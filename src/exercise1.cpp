@@ -5,7 +5,8 @@
 #define _MAKE_STR(x) __MAKE_STR(x)
 #define __MAKE_STR(x) #x
 
-#include "exercise1_STUDENTID.hpp"
+#include "exercise1_20233460.hpp"
+//#include "exercise1_otherSolution.hpp.hpp"
 #include "raisim/RaisimServer.hpp"
 
 
@@ -23,6 +24,8 @@ int main(int argc, char* argv[]) {
   // aliengo configuration
   Eigen::VectorXd jointNominalConfig(aliengo->getGeneralizedCoordinateDim());
   jointNominalConfig << 0, 0, 0.54, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8;
+  // jointNominalConfig << 0, 0, 0.54, 1.0, 0.0, 0.0, 0.0, 0., 0.4, 0., 0.0, 0., 0., 0., 0., 0., 0., 0., 0.;
+  // jointNominalConfig 는 gc에서 pos/orient/theta(12개축...revolute joint)
   aliengo->setGeneralizedCoordinate(jointNominalConfig);
 
   // debug sphere
@@ -30,12 +33,15 @@ int main(int argc, char* argv[]) {
   debugSphere->setColor(1,0,0,1);
   debugSphere->setPosition(getEndEffectorPosition(jointNominalConfig));
 
+
   // solution sphere
   auto answerSphere = server.addVisualSphere("answer_sphere", 0.02);
   answerSphere->setColor(0,1,0,1);
   raisim::Vec<3> pos;
   aliengo->getFramePosition("FR_foot_fixed", pos);
   answerSphere->setPosition(pos.e());
+
+
 
   // visualization
   server.launchServer();
