@@ -5,8 +5,9 @@
 #define _MAKE_STR(x) __MAKE_STR(x)
 #define __MAKE_STR(x) #x
 
-#include "exercise1_20233460.hpp"
+//#include "exercise1_20233460.hpp"
 //#include "exercise1_otherSolution.hpp.hpp"
+#include "exercise2_STUDENTID.hpp"
 #include "raisim/RaisimServer.hpp"
 
 
@@ -29,7 +30,7 @@ int main(int argc, char* argv[]) {
   aliengo->setGeneralizedCoordinate(jointNominalConfig);
 
   // debug sphere
-  auto debugSphere = server.addVisualSphere("debug_sphere", 0.02);
+  auto debugSphere = server.addVisualSphere("debug_sphere", 0.04);
   debugSphere->setColor(1,0,0,1);
   debugSphere->setPosition(getEndEffectorPosition(jointNominalConfig));
 

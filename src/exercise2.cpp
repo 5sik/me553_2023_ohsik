@@ -7,7 +7,7 @@
 #define __MAKE_STR(x) #x
 
 #include "raisim/RaisimServer.hpp"
-#include "exercise2_STUDENTID.hpp"
+#include "exercise2_20233460.hpp"
 
 int main(int argc, char* argv[]) {
   auto binaryPath = raisim::Path::setFromArgv(argv[0]);
@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
   raisim::Vec<3> footVel, footAngVel;
   bool answerCorrect = true;
 
-  for (int i=0; i<2000; i++) {
+  for (int i=0; i<20000; i++) {
     RS_TIMED_LOOP(world.getTimeStep()*1e6);
 
     aliengo->getFrameVelocity("FR_foot_fixed", footVel);
@@ -56,9 +56,9 @@ int main(int argc, char* argv[]) {
       std::cout<<"the angular velocity is not correct "<<std::endl;
       answerCorrect = false;
     }
-
-    server.integrateWorldThreadSafe();
     aliengo->getState(gc, gv);
+    server.integrateWorldThreadSafe();
+
   }
 
   server.killServer();
