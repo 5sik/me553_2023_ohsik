@@ -7,8 +7,8 @@
 #define __MAKE_STR(x) #x
 
 #include "raisim/RaisimServer.hpp"
-#include "exercise2_20233460.hpp"
-//#include "exercise2_othermethod.hpp"
+//#include "exercise2_20233460.hpp"
+#include "exercise2_2th_method.hpp"
 
 
 
@@ -55,10 +55,8 @@ int main(int argc, char* argv[]) {
 
     if((footAngVel.e() - getFootAngularVelocity(gc, gv)).norm() < 1e-5) {
       std::cout<<"the angular velocity is correct "<<std::endl;
-      std::cout<<footAngVel.e() << getFootAngularVelocity(gc, gv)<<std::endl;
     } else {
       std::cout<<"the angular velocity is not correct "<<std::endl;
-      std::cout<<footAngVel.e() << getFootAngularVelocity(gc, gv)<<std::endl;
       answerCorrect = false;
     }
 

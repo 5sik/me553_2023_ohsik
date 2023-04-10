@@ -57,8 +57,9 @@ inline Eigen::Vector3d getFootLinearVelocity (const Eigen::VectorXd& gc, const E
     raisim::Vec<4> v1;// for 쿼터니안
     for(int i=0;i<4;i++)
         v1[i] = gc[i+3];
-    raisim::quatToRotMat(v1,R);  // 00'(Trunk) 의 Rotational Matrix
+    raisim::quatToRotMat(v1,R);  // 00'(Trunk) 의 Rotational Matrix , Trunk frame to world frame
     v << R.e()*v + CrossProduct(w,R.e()*p);
+    // w는 이미 world frame이여서 나머지 body frame을 world frame으로 변환 내말은 Coordinate들을
     v << v + Eigen::Vector3d{gv[0],gv[1],gv[2]};
 
 
@@ -96,7 +97,7 @@ inline Eigen::Vector3d getFootAngularVelocity (const Eigen::VectorXd& gc, const 
   raisim::Vec<4> v;// for 쿼터니안
   for(int i=0;i<4;i++)
     v[i] = gc[i+3];
-  raisim::quatToRotMat(v,R);  // 00'(Trunk) 의 Rotational Matrix
+  raisim::quatToRotMat(v,R);  // 00'(Trunk) 의 Rotational Matrix , Trunk frame to world frame
   w << R.e() * w ; // Trunk axis 회전까지 고려
   w << w + Eigen::Vector3d{gv[3],gv[4],gv[5]}; // Trunk Angular Velocity 고려
 
