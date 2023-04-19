@@ -21,7 +21,7 @@ Eigen::Matrix3d RotationMatrix(std::string axis, double angle) {
                 sin(angle), cos(angle), 0,
                 0, 0, 1;
     }
-    return RotM; // 삼각함수 std:: 해야하나 ?
+    return RotM;
 }
 
 /// do not change the name of the method

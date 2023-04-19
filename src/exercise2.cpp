@@ -7,8 +7,8 @@
 #define __MAKE_STR(x) #x
 
 #include "raisim/RaisimServer.hpp"
-//#include "exercise2_20233460.hpp"
-#include "exercise2_2th_method.hpp"
+// #include "exercise2_20233460.hpp"
+#include "exercise2_20233262__.hpp"
 
 
 
@@ -24,6 +24,7 @@ int main(int argc, char* argv[]) {
   // a1
   // aliengo
   auto aliengo = world.addArticulatedSystem(std::string(_MAKE_STR(RESOURCE_DIR)) + "/aliengo/aliengo.urdf");
+  std::cout<<std::string(_MAKE_STR(RESOURCE_DIR)) + "/aliengo/aliengo.urdf"<<std::endl;
   aliengo->setName("aliengo");
   server.focusOn(aliengo);
 
