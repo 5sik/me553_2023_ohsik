@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
   server.launchServer();
   bool answerCorrect = true;
 
-  for (int i=0; i<3; i++) {
+  for (int i=0; i<3000; i++) {
     RS_TIMED_LOOP(world.getTimeStep()*1e6)
 
     cartPole->getState(gc, gv);
