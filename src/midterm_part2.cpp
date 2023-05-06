@@ -7,7 +7,8 @@
 #define __MAKE_STR(x) #x
 
 #include "raisim/RaisimServer.hpp"
-#include "midterm_STUDENTID.hpp"
+#include "midterm_20233460.hpp"
+
 
 int main(int argc, char* argv[]) {
   auto binaryPath = raisim::Path::setFromArgv(argv[0]);
@@ -28,7 +29,7 @@ int main(int argc, char* argv[]) {
   Eigen::VectorXd gc(cartPole->getGeneralizedCoordinateDim());
   Eigen::VectorXd gv(cartPole->getDOF());
 
-  gc << 0, 0.5;
+  gc << 0, 0.8;
   gv << 0, 0;
   cartPole->setState(gc, gv);
 

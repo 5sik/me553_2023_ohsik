@@ -3,7 +3,8 @@
 //
 
 #include "raisim/RaisimServer.hpp"
-#include "exercise3_STUDENTID.hpp"
+#include "exercise3_20233460_finish.hpp"
+
 
 #define _MAKE_STR(x) __MAKE_STR(x)
 #define __MAKE_STR(x) #x
@@ -24,8 +25,16 @@ int main(int argc, char* argv[]) {
   gv << 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8;
   aliengo->setState(gc, gv);
 
+
   /// if you are using an old version of Raisim, you need this line
   world.integrate1();
+
+//  std::vector<Eigen::MatrixXd> X;
+//  X.push_back(Eigen::MatrixXd::Zero(3,18));
+//  X.at(0).col(8) = Eigen::Matrix3d::Ones() * Eigen::Vector3d{1,1,1};
+//  std::cout<<X.at(0)<<std::endl;
+
+  std::cout<<"mass matrix which I found is \n"<< getMassMatrix(gc) <<std::endl;
 
   std::cout<<"mass matrix should be \n"<< aliengo->getMassMatrix().e()<<std::endl;
 

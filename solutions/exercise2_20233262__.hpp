@@ -4,6 +4,7 @@
 #include <vector>
 #include "raisim/math.hpp"
 
+void raisim::angleAxisToRotMat(const Vec<3> &a1, const double theta, Mat<3, 3> &rotMat) {}
 class Joint
 {
 public:

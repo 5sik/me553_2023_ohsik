@@ -12,6 +12,7 @@ create_executable(exercise4 src/exercise4.cpp)
 #create_executable(exercise5 src/exercise5.cpp)
 #create_executable(exercise6 src/exercise6.cpp)
 #create_executable(exercise7 src/exercise7.cpp)
+create_executable(test src/test.cpp)
 
 # examples
 create_executable(rotation_example_angle_axis src/rotation_example_angle_axis.cpp)
