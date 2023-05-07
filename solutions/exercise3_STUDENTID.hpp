@@ -3,7 +3,7 @@
 #include <Eigen/Core>
 #include "raisim/math.hpp"
 
-////// Quaternion To Rotation ////// quaternion값 맞나 확인 필요!!!!!!!!!!///////
+
 Eigen::Matrix3d QtoR(const Eigen::VectorXd &gc) {
   Eigen::Matrix3d Rot;
   Eigen::Vector4d q; // quaternion vector

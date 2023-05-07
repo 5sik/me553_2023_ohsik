@@ -22,8 +22,7 @@ Eigen::Matrix3d RotM(const std::string &axis, const double &angle) {
   }
   return Rot;
 }
-
-////// Quaternion To Rotation ////// quaternion값 맞나 확인 필요!!!!!!!!!!///////
+////// Quaternion To Rotation
 Eigen::Matrix3d QtoR(Eigen::Vector4d q) {
   Eigen::Matrix3d Rot;
 
@@ -58,11 +57,11 @@ std::tuple<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>> getJacobi
   position << 0.008465, 0.004045, -0.000763; // distance between floating_base_joint and trunk_link_COM
   position << rot * position; // trunk com쪽이랑 quaternion 고려한 pos
   // 이제 만들어놓은 JP, JA채우기 여기서는 trunk joint frame 기준으로
-  JP.at(0).middleCols(0,3) = rot.transpose(); // world frame으로 보는게 아니라서 quaternion 만큼 돌아간거 다시 되돌려 놔야함.
+  JP.at(0).middleCols(0,3) = rot.transpose(); // world frame으로 보는게 아니라, Body Frame 기준으로보기 위해 :  quaternion 만큼 돌아간거 다시 되돌려 놔야함.
   temp = skewSymMat(position);
   JP.at(0).middleCols(3,3) = -rot.transpose() * temp; // -는 외적 순서를 바꿨기 때문에 ( jaco * Gv 계산 위해 )
   JA.at(0).middleCols(3,3) = rot.transpose();
-  // 이제 만들어놓은 JP, JA채우기 여기서는 imu joint frame 기준으로
+  // 이제 만들어놓은 JP, JA채우기 여기서는 imu joint frame (사실 trunk에 붙어있어서 quaternion으로 같음) 기준으로
   JP.at(1).middleCols(0,3) = rot.transpose();  // for IMU , 여기도 trunk joint에 의해 돌아간거 회복
   JA.at(1).middleCols(3,3) = rot.transpose();  // for IMU
 

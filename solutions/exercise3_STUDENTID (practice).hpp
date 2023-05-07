@@ -20,7 +20,7 @@ explicit Eigen::Matrix3d RotM(const std::string &axis, const double &angle) {
   }
   return Rot;
 }
-////// Quaternion To Rotation ////// quaternion값 맞나 확인 필요!!!!!!!!!!///////
+////// Quaternion To Rotation
 Eigen::Matrix3d QtoR(const Eigen::VectorXd &gc) {
   Eigen::Matrix3d Rot;
   Eigen::Vector4d q; // quaternion vector

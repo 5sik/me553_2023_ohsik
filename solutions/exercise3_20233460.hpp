@@ -134,17 +134,17 @@ void getCurrentState(const Eigen::VectorXd &gc) { ///get robot configuration par
   FR_ThighToCalf << 0, 0, -0.25;
   FR_CalfToFoot << 0, 0, -0.25;
   FL_FBaseToHip << 0.2399, 0.051, 0;
-  FL_HipToThigh << 0, 0.083, 0;
-  FL_ThighToCalf << 0, 0 +gc(11) , -0.25;
+  FL_HipToThigh << 0, 0.083+gc(11), 0;
+  FL_ThighToCalf << 0, 0 , -0.25;
   FL_CalfToFoot << 0, 0, -0.25;
   RR_FBaseToHip << -0.2399, -0.051, 0;
   RR_HipToThigh << 0, -0.083, 0;
   RR_ThighToCalf << 0, 0, -0.25;
   RR_CalfToFoot << 0, 0, -0.25;
-  RL_FBaseToHip << -0.2399, 0.051, 0;
-  RL_HipToThigh << 0 +gc(16), 0.083, 0;
-  RL_ThighToCalf << 0, 0+gc(17), -0.25;
-  RL_CalfToFoot << 0, 0+gc(18), -0.25;
+  RL_FBaseToHip << -0.2399+gc(16), 0.051, 0;
+  RL_HipToThigh << 0 , 0.083+gc(17), 0;
+  RL_ThighToCalf << 0, 0+gc(18), -0.25;
+  RL_CalfToFoot << 0, 0, -0.25;
   RootP << gc(0), gc(1), gc(2);
   Roota = QtoR(gc);
 
@@ -309,7 +309,7 @@ Eigen::Vector3d getCOMAbsPos(const Eigen::VectorXd &gc, int index1, int index2) 
     ThighRot = FL_ThighRot;
     CalfRot = FL_CalfRot;
     HipCOM = FL_HipCOM;
-    ThighCOM = FL_ThighCOM + Eigen::Vector3d {0, gc(11),0};
+    ThighCOM = FL_ThighCOM;
     CalfFootCOM = FL_CalfFootCOM;
   } else if (index1 == 3) {
     HipRot = RR_HipRot;
@@ -322,9 +322,9 @@ Eigen::Vector3d getCOMAbsPos(const Eigen::VectorXd &gc, int index1, int index2) 
     HipRot = RL_HipRot;
     ThighRot = RL_ThighRot;
     CalfRot = RL_CalfRot;
-    HipCOM = RL_HipCOM + Eigen::Vector3d {gc(16),0,0};
-    ThighCOM = RL_ThighCOM + Eigen::Vector3d {0, gc(17),0};
-    CalfFootCOM = RL_CalfFootCOM + Eigen::Vector3d {0, gc(18),0};
+    HipCOM = RL_HipCOM;
+    ThighCOM = RL_ThighCOM;
+    CalfFootCOM = RL_CalfFootCOM ;
   } else {
     return Eigen::Vector3d::Zero();
   }
