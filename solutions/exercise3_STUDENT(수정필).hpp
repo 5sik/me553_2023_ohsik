@@ -38,6 +38,12 @@ Eigen::Matrix3d skewSymMat(const Eigen::Vector3d &vec) {
   mat << 0, -vec[2], vec[1], vec[2], 0, -vec[0], -vec[1], vec[0], 0;
   return mat;
 }
+///// Make the Inertia Matrix using the half of the entries
+Eigen::Matrix3d GetInertiaMatrix (double ixx,double ixy,double ixz,double iyy,double iyz,double izz){
+  Eigen::Matrix3d I;
+  I << ixx, ixy, ixz, ixy, iyy, iyz, ixz, iyz, izz;
+  return I;
+}
 
 ////// Get Jacobian cosisting Jaco.Pos + Jaco. Ang
 std::tuple<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>> getJacobian(const Eigen::VectorXd& gc){
@@ -67,21 +73,26 @@ std::tuple<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>> getJacobi
 
   for (int leg=0; leg<4; leg++){ // leg = 0:FR/ 1:FL/ 2:RR/ 3: RL
     double front = 1 - 2 * (leg / 2); // front = 1 , hind(Rear) = -1
-                                      // (leg/2)는 int로써 leg = 0,1 일때 front (=1) / leg=2,3 일때 Rear(=-1)
+    // (leg/2)는 int로써 leg = 0,1 일때 front (=1) / leg=2,3 일때 Rear(=-1)
     double right = 1 - 2 * (leg & 2); // right = 1 , legt = -1
-                                      // (leg&2)는 int로써 leg = 0,2 일때 right (=1) / leg=1,3 일때 left(=-1)
+    // (leg&2)는 int로써 leg = 0,2 일때 right (=1) / leg=1,3 일때 left(=-1)
     std::vector<Eigen::Vector3d> linkPos; // 순서는 foot->calf->thigh->hip
     std::vector<Eigen::Matrix3d> linkRot;
 
 
-    // w.r.t the calf_joint ///RL_calf는 prismatic임 조심조심
+    /// w.r.t the calf_joint ///RL_calf는 prismatic임 조심조심
     linkPos.push_back(Eigen::Vector3d{0,0,-0.25}); // calf_joint 에서 foot_joint까지 거리
     linkRot.push_back(Eigen::Matrix3d::Identity()); // foot joint는 따로 돌아가는게 없어서 identity
     linkPos.push_back(Eigen::Vector3d{0.002781, 6.3e-05, -0.142518}); // calf_joint에서 calf com 까지 거리 & 다리 4짝 똑같음
     linkRot.push_back(Eigen::Matrix3d::Identity()); // calf COM은 따로 돌아가는게 없어서 identity
     axis << 0,1,0;
 
-/////이 for문 뜯어 보기 안에 들어가는 의미 분석
+    for(int link=0; link <linkPos.size() ; link++){
+      if(leg == 3){
+        linkPos.at(link) += Eigen::Vector3d {0,gc(18),0};
+      }
+    }
+
     for (int link=0; link <linkPos.size() ; link++){  // linkPos.size는 foot이랑 calf_link pos하나씩 들어가서 2개임
       // (RL_calf)  leg = 3 prismatic
       if(leg == 3){ /// 1-몸통, 1-imu(mass있음), 12-힙,피치,니, 4-foot
@@ -96,22 +107,34 @@ std::tuple<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>> getJacobi
       }
     }
 
-    // w.r.t the thigh_joint // FL & RL thigh 는 prismatic임 조심조심
-    rot = RotM(axis(0) == 1 ? "x" : axis(1) == 1 ? "y" : "z",7 + 3 * leg +2); // calf_joint에서 돌아가는거 check
+    /// w.r.t the thigh_joint // FL & RL thigh 는 prismatic임 조심조심
+
     position << 0,0,-0.25; // thigh_joint 에서 calf_joint 까지 거리
+    if(leg==3){
+      rot = Eigen::Matrix3d::Identity();
+    }
+    else{
+      rot = RotM(axis(0) == 1 ? "x" : axis(1) == 1 ? "y" : "z",gc(7 + 3 * leg +2)); // calf_joint에서 돌아가는거 check
+    }
 
     for (int link=0; link<linkPos.size(); link++){ // foot이랑 calf_link 가 calf_joint에 의해 돌아간거 계산
       linkPos.at(link) << rot * linkPos.at(link) + position; // calf 돌아간거 고려해서 컨테이너에 새로 계산해서 집어넣음
       linkRot.at(link) << rot * linkRot.at(link);
     }
-    linkPos.push_back(Eigen::Vector3d{-0.005607, right * 0.003877, -0.048199});
+    linkPos.push_back(Eigen::Vector3d{-0.005607, right * 0.003877, -0.048199}); // thigh Link COM 추가
     linkRot.push_back(Eigen::Matrix3d::Identity());
     axis<< 0,1,0;
 
-    for (int link=0; link<linkPos.size(); link++){
+    for(int link=0; link <linkPos.size() ; link++){
+      if(( leg == 1 ) || ( leg == 3 )){
+        linkPos.at(link) += Eigen::Vector3d {0,gc(7 + 3 * leg + 1),0};
+      }
+    }
+
+    for (int link=0; link<linkPos.size(); link++){ // 현재 link: 0=foot 1=calf_com 2=thigh_com
       // FL_thigh leg = 1 &  RL_thigh leg = 3 은 prismatic joint
       if (( leg == 1 ) || ( leg == 3 )) {
-        JP.at(2 + 4 * leg + 3 - link).col(6 + 3 * leg + 1) = linkRot.at(link).transpose() * axis;
+        JP.at(2 + 4 * leg + 3 - link).col(6 + 3 * leg + 1) = linkRot.at(link).transpose() * axis; // column은 thigh 쪽임
         JA.at(2 + 4 * leg + 3 - link).col(6 + 3 * leg + 1) = Eigen::Vector3d::Zero();
       }
       else {
@@ -120,9 +143,14 @@ std::tuple<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>> getJacobi
       }
     }
 
-    // w.r.t the Hip_joint // RL hip 는 prismatic임 조심조심
-    rot = RotM(axis(0) == 1 ? "x" : axis(1) == 1 ? "y" : "z",7 + 3 * leg +1); // thigh_joint에서 돌아가는거 check
+    /// w.r.t the Hip_joint // RL hip 는 prismatic임 조심조심
     position << 0,-right*0.083,0; // Hip_joint 에서 thigh_joint 까지 거리
+    if(( leg == 1 ) || ( leg == 3 )){
+      rot = Eigen::Matrix3d::Identity();
+    }
+    else{
+      rot = RotM(axis(0) == 1 ? "x" : axis(1) == 1 ? "y" : "z",gc(7 + 3 * leg +1)); // calf_joint에서 돌아가는거 check
+    }
 
     for (int link=0; link<linkPos.size(); link++){ // thigh_joint에 의해 돌아간거 계산
       linkPos.at(link) << rot * linkPos.at(link) + position; // thigh 돌아간거 고려해서 컨테이너에 새로 계산해서 집어넣음
@@ -132,6 +160,13 @@ std::tuple<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>> getJacobi
     linkPos.push_back(Eigen::Vector3d{-front*0.022191, -right*0.015144, -1.5e-05});
     linkRot.push_back(Eigen::Matrix3d::Identity());
     axis << 1,0,0;
+
+    for(int link=0; link <linkPos.size() ; link++){
+      if( leg == 3 ){
+        linkPos.at(link) += Eigen::Vector3d {gc(16),0,0};
+      }
+    }
+
 
     for (int link=0; link<linkPos.size(); link++){
       // RL_hip leg = 3 은 prismatic joint
@@ -145,16 +180,21 @@ std::tuple<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>> getJacobi
       }
     }
 
-    // w.r.t the Body
-    rot = RotM(axis(0) == 1 ? "x" : axis(1) == 1 ? "y" : "z",7 + 3 * leg +0); // hip_joint에서 돌아가는거 check
+    /// w.r.t the Body
     position << front*0.2399, -right*0.051, 0; // Hip_joint 에서 thigh_joint 까지 거리
+    if( leg == 3 ){
+      rot = Eigen::Matrix3d::Identity();
+    }
+    else{
+      rot = RotM(axis(0) == 1 ? "x" : axis(1) == 1 ? "y" : "z",gc(7 + 3 * leg +0)); // calf_joint에서 돌아가는거 check
+    }
 
     for(int link=0; link<linkPos.size();link++){
       linkPos.at(link) << rot * linkPos.at(link) + position; // hip 돌아간거 고려해서 컨테이너에 새로 계산해서 집어넣음
       linkRot.at(link) << rot * linkRot.at(link);
     }
 
-    // w.r.t the world
+    /// w.r.t the world
     rot = QtoR(gc.segment(3,4));
     for(int link=0; link<linkPos.size();link++){
       linkPos.at(link) << rot * linkPos.at(link); // body, quaternion으로 인해 돌아간거 고려해서 컨테이너에 새로 계산해서 집어넣음
@@ -165,17 +205,12 @@ std::tuple<std::vector<Eigen::MatrixXd>, std::vector<Eigen::MatrixXd>> getJacobi
       JP.at(2+4*leg+3-link).middleCols(0,3) = linkRot.at(link).transpose();
       temp = skewSymMat(linkPos.at(link));
       JP.at(2+4*leg+3-link).middleCols(3,3) = -linkRot.at(link).transpose() * temp;
-      JA.at(2+4*leg+3-link).middleCols(3,3) = -linkRot.at(link).transpose();
+      JA.at(2+4*leg+3-link).middleCols(3,3) = linkRot.at(link).transpose();
     }
   }
- return {JP, JA};
+  return {JP, JA};
 }
-///// Make the Inertia Matrix using the half of the entries
-Eigen::Matrix3d GetInertiaMatrix (double ixx,double ixy,double ixz,double iyy,double iyz,double izz){
-  Eigen::Matrix3d I;
-  I << ixx, ixy, ixz, ixy, iyy, iyz, ixz, iyz, izz;
-  return I;
-}
+
 
 inline Eigen::MatrixXd getMassMatrix(const Eigen::VectorXd &gc) {
 
