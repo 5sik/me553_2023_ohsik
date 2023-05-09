@@ -3,7 +3,7 @@
 //
 
 #include "raisim/RaisimServer.hpp"
-#include "exercise3_20233460.hpp"
+#include "exercise3_STUDENTID(mine).hpp"
 
 
 #define _MAKE_STR(x) __MAKE_STR(x)
