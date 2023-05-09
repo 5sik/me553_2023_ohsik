@@ -227,38 +227,48 @@ inline Eigen::MatrixXd getMassMatrix(const Eigen::VectorXd &gc) {
   raisim::rpyToRotMat_intrinsic(Eigen::Vector3d{0, 0, 0}, rotMat);
 
   std::vector<Body> bodies;
-  Body trunk(Eigen::Vector3d{0.012731, 0.002186, 0.000515}, 4.713,
-             GetInertiaMatrix(0.01683993, 8.3902e-05, 0.000597679, 0.056579028, 2.5134e-05, 0.064713601), 0,
-             Eigen::Vector3d::Zero(), Eigen::Matrix3d::Zero(), Eigen::Vector3d::Zero(),Body::Joint::Type::fixed);
+  Body trunk(Eigen::Vector3d{0.008465, 0.004045, -0.000763}, 9.041,
+             GetInertiaMatrix(0.033260231, -0.000451628, 0.000487603, 0.16117211, 4.8356e-05, 0.17460442), 0,
+             Eigen::Vector3d::Zero(), Eigen::Matrix3d::Zero(), Eigen::Vector3d::Zero(),
+             Body::Joint::Type::fixed);
   Body imu_link(Eigen::Vector3d{0, 0, 0}, 0.001,
                 GetInertiaMatrix(0.0001, 0, 0, 0.000001, 0, 0.0001), 0,
-                Eigen::Vector3d{0, 0, 0}, rotMat.e(), Eigen::Vector3d::Zero(), Body::Joint::Type::fixed);
+                Eigen::Vector3d{0, 0, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(),
+                Body::Joint::Type::fixed);
   bodies.push_back(getCompositeBody(trunk, imu_link, 0));
 
-  Body FR_hip(Eigen::Vector3d{-0.003311, -0.000635, 3.1e-05}, 0.696,
-              GetInertiaMatrix(0.000469246, 9.409e-06, -3.42e-07, 0.00080749, 4.66e-07, 0.000552929), 0,
-              Eigen::Vector3d{0.183, -0.047, 0}, rotMat.e(), Eigen::Vector3d{1, 0, 0}, Body::Joint::Type::revolute);
-  bodies.push_back(FR_hip);
+  for(int leg=0; leg<4; leg++) {
+    // leg=0:FR / leg=1:FL / leg=2:RR / leg=3:RL
+    double front = 1 - 2 * (leg / 2);
+    double right = 1 - 2 * (leg & 2);
 
-  Body FR_thigh(Eigen::Vector3d{-0.003237, 0.022327, -0.027326}, 1.013,
-                GetInertiaMatrix(0.005529065, -4.825e-06, 0.000343869, 0.005139339, -2.2448e-05, 0.001367788), 1,
-                Eigen::Vector3d{0, -0.08505, 0}, rotMat.e(), Eigen::Vector3d{0, 1, 0}, Body::Joint::Type::revolute);
-  bodies.push_back(FR_thigh);
+    Body hip(Eigen::Vector3d{-front*0.022191, -right*0.015144, -1.5e-05}, 1.993,
+                GetInertiaMatrix(0.002903894, front*right*7.185e-05, -front*1.262e-06, 0.004907517, right*1.75e-06, 0.005586944), 0,
+                Eigen::Vector3d{front*0.2399, -right*0.051, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{1, 0, 0},
+             (leg==3 ? Body::Joint::Type::prismatic : Body::Joint::Type::revolute));
+    bodies.push_back(hip);
 
-  Body FR_calf(Eigen::Vector3d{0.006435, 0.0, -0.107388}, 0.166,
-               GetInertiaMatrix(0.002997972, 0.0, -0.000141163, 0.003014022, 0.0, 3.2426e-05), 2,
-               Eigen::Vector3d{0, 0, -0.2}, rotMat.e(), Eigen::Vector3d{0, 1, 0},Body::Joint::Type::revolute);
-  Body FR_foot(Eigen::Vector3d{0, 0, 0}, 0.06,
-               GetInertiaMatrix(9.6e-06, 0.0, 0.0, 9.6e-06, 0.0, 9.6e-06), 0,
-               Eigen::Vector3d{0, 0, -0.2}, rotMat.e(), Eigen::Vector3d::Zero(),Body::Joint::Type::fixed);
-  bodies.push_back(getCompositeBody(FR_calf, FR_foot, 0));
+    Body thigh(Eigen::Vector3d{-0.005607, right*0.003877, -0.048199}, 0.639,
+                  GetInertiaMatrix(0.005666803, -right*3.597e-06, 0.000491446, 0.005847229, -right*1.0086e-05, 0.000369811), 3*leg+1,
+                  Eigen::Vector3d{0, -right*0.083, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+               ((leg==1|leg==3) ? Body::Joint::Type::prismatic : Body::Joint::Type::revolute));
+    bodies.push_back(thigh);
 
-  ArticulatedSystem a1_simplified(bodies);
-  a1_simplified.computeForwardKinematics(gc);
+    Body calf(Eigen::Vector3d{0.002781, 6.3e-05, -0.142518}, 0.207,
+                 GetInertiaMatrix(0.006341369, -3e-09, -8.7951e-05, 0.006355157, -1.336e-06, 3.9188e-05), 3*leg+2,
+                 Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+              (leg==3 ? Body::Joint::Type::prismatic : Body::Joint::Type::revolute));
+    Body foot(Eigen::Vector3d{0, 0, 0}, 0.06,
+                 GetInertiaMatrix(1.6854e-05, 0.0, 0.0, 1.6854e-05, 0.0, 1.6854e-05), 3*leg+2,
+                 Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(),
+                 Body::Joint::Type::fixed);
+    bodies.push_back(getCompositeBody(calf, foot, 0));
+  }
 
-  ArticulatedSystem aliango(bodies);
-  aliango.computeForwardKinematics(gc);
+  ArticulatedSystem railab(bodies);
+  railab.computeForwardKinematics(gc);
 
 
-  return aliango.getMassMatrix();
+
+  return railab.getMassMatrix();
 }

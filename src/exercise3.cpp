@@ -34,9 +34,9 @@ int main(int argc, char* argv[]) {
 //  X.at(0).col(8) = Eigen::Matrix3d::Ones() * Eigen::Vector3d{1,1,1};
 //  std::cout<<X.at(0)<<std::endl;
 //
-//  raisim::Mat<3, 3> rotMat; // temporary variable to save rotation matrix
-//  raisim::rpyToRotMat_intrinsic(Eigen::Vector3d{0, 0, 0}, rotMat);
-//  std::cout<< rotMat.e() <<std::endl;
+  raisim::Mat<3, 3> rotMat; // temporary variable to save rotation matrix
+  raisim::rpyToRotMat_intrinsic(Eigen::Vector3d{0, 0, 0}, rotMat);
+  std::cout<< rotMat.e() <<std::endl;
 
   std::cout<<"mass matrix which I found is \n"<< getMassMatrix(gc) <<std::endl;
 
