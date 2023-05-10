@@ -1,0 +1,71 @@
+  ////FL
+  Body hip(Eigen::Vector3d{-0.022191, 0.015144, -1.5e-05}, 1.993,
+           GetInertiaMatrix(0.002903894, -7.185e-05, -1.262e-06, 0.004907517, -1.75e-06, 0.005586944), 0,
+           Eigen::Vector3d{0.2399, 0.051, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{1, 0, 0},
+           Body::Joint::Type::revolute);
+  bodies.push_back(hip);
+
+  Body thigh(Eigen::Vector3d{-0.005607, -0.003877, -0.048199}, 0.639,
+             GetInertiaMatrix(0.005666803, 3.597e-06, 0.000491446, 0.005847229, 1.0086e-05, 0.000369811), 1,
+             Eigen::Vector3d{0, 0.083, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+            Body::Joint::Type::prismatic);
+  bodies.push_back(thigh);
+
+  Body calf(Eigen::Vector3d{0.002781, 6.3e-05, -0.142518}, 0.207,
+            GetInertiaMatrix(0.006341369, -3e-09, -8.7951e-05, 0.006355157, -1.336e-06, 3.9188e-05), 2,
+            Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+           Body::Joint::Type::revolute);
+  Body foot(Eigen::Vector3d{0, 0, 0}, 0.06,
+            GetInertiaMatrix(1.6854e-05, 0.0, 0.0, 1.6854e-05, 0.0, 1.6854e-05),2,
+            Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(),
+            Body::Joint::Type::fixed);
+  bodies.push_back(getCompositeBody(calf, foot, 0));
+
+  --------------------------------------------------
+  ////RR
+    Body hip(Eigen::Vector3d{0.022191, -0.015144, -1.5e-05}, 1.993,
+             GetInertiaMatrix(0.002903894, -7.185e-05, 1.262e-06, 0.004907517, 1.75e-06, 0.005586944), 0,
+             Eigen::Vector3d{-0.2399, -0.051, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{1, 0, 0},
+             Body::Joint::Type::revolute);
+    bodies.push_back(hip);
+
+    Body thigh(Eigen::Vector3d{-0.005607, 0.003877, -0.048199}, 0.639,
+               GetInertiaMatrix(0.005666803, -3.597e-06, 0.000491446, 0.005847229, -1.0086e-05, 0.000369811), 1,
+               Eigen::Vector3d{0, -0.083, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+              Body::Joint::Type::revolute);
+    bodies.push_back(thigh);
+
+    Body calf(Eigen::Vector3d{0.002781, 6.3e-05, -0.142518}, 0.207,
+              GetInertiaMatrix(0.006341369, -3e-09, -8.7951e-05, 0.006355157, -1.336e-06, 3.9188e-05), 2,
+              Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+             Body::Joint::Type::revolute);
+    Body foot(Eigen::Vector3d{0, 0, 0}, 0.06,
+              GetInertiaMatrix(1.6854e-05, 0.0, 0.0, 1.6854e-05, 0.0, 1.6854e-05),2,
+              Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(),
+              Body::Joint::Type::fixed);
+    bodies.push_back(getCompositeBody(calf, foot, 0));
+
+    -----------------------------------------------------
+
+  ////RL
+  Body hip(Eigen::Vector3d{0.022191, 0.015144, -1.5e-05}, 1.993,
+           GetInertiaMatrix(0.002903894, 7.185e-05, 1.262e-06, 0.004907517, -1.75e-06, 0.005586944), 0,
+           Eigen::Vector3d{-0.2399, 0.051, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{1, 0, 0},
+           Body::Joint::Type::prismatic);
+  bodies.push_back(hip);
+
+  Body thigh(Eigen::Vector3d{-0.005607, -0.003877, -0.048199}, 0.639,
+             GetInertiaMatrix(0.005666803, 3.597e-06, 0.000491446, 0.005847229, 1.0086e-05, 0.000369811), 1,
+             Eigen::Vector3d{0, 0.083, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+             Body::Joint::Type::prismatic);
+  bodies.push_back(thigh);
+
+  Body calf(Eigen::Vector3d{0.002781, 6.3e-05, -0.142518}, 0.207,
+            GetInertiaMatrix(0.006341369, -3e-09, -8.7951e-05, 0.006355157, -1.336e-06, 3.9188e-05), 2,
+            Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+            Body::Joint::Type::prismatic);
+  Body foot(Eigen::Vector3d{0, 0, 0}, 0.06,
+            GetInertiaMatrix(1.6854e-05, 0.0, 0.0, 1.6854e-05, 0.0, 1.6854e-05),2,
+            Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(),
+            Body::Joint::Type::fixed);
+  bodies.push_back(getCompositeBody(calf, foot, 0));
