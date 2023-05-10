@@ -111,8 +111,6 @@ inline Body getCompositeBody(const Body &parent, const Body &child, double gc) {
   Body compositeBody = parent;
   compositeBody.mass_ = parent.mass_ + child.mass_;
 
-  // rot은 child body에 붙어있는 기준 joint가 rotate joint 이면 돌려야하니깐
-  rot = RotM(child.joint_.jointAxis_B_(0) == 1 ? "x" : child.joint_.jointAxis_B_(1) == 1 ? "y" : "z", gc);
   // child.joint_.jointRot_B_ matrix는 사실 Identity, because 보통 붙어 있는 body들은 축이 돌아가 있지 않고 같은 방향을 보임 (child.axis가 시작부터 돌아있는 각을 뜻함)
   // 일반적으로는 축이 돌아가 있지를 않아서 Identity
 
@@ -120,8 +118,10 @@ inline Body getCompositeBody(const Body &parent, const Body &child, double gc) {
   Eigen::Vector3d childComPos_parent_origin;
 //   parent joint 기준점으로 child.joint 거리에다가 회전이 반영된 child.body_com 까지 거리
   if ( child.joint_.type_ == Body::Joint::Type::prismatic) {
+    childRot_parent_origin = child.joint_.jointRot_B_;
     childComPos_parent_origin = (child.joint_.jointPos_B_ + child.joint_.jointRot_B_ * child.joint_.jointAxis_B_ * gc) + child.joint_.jointRot_B_ * child.comPos_B_;
   } else {
+    rot = RotM(child.joint_.jointAxis_B_(0) == 1 ? "x" : child.joint_.jointAxis_B_(1) == 1 ? "y" : "z", gc);  // rot은 child body에 붙어있는 기준 joint가 rotate joint 이면 돌려야하니깐
     childRot_parent_origin = child.joint_.jointRot_B_ * rot;
     childComPos_parent_origin = (child.joint_.jointPos_B_) + childRot_parent_origin * child.comPos_B_;
   }
@@ -175,7 +175,7 @@ public:
           bodies_[i].joint_.S.tail(3) = bodies_[i].rot_W_ * bodies_[i].joint_.jointAxis_B_;
           break;
         case (Body::Joint::Type::prismatic) :
-          bodies_[i].pos_W_ = bodies_[bodies_[i].parent_].pos_W_ + bodies_[bodies_[i].parent_].rot_W_ *(bodies_[i].joint_.jointPos_B_ + bodies_[i].joint_.jointAxis_B_ * gc_[i + 6]); // need to check
+          bodies_[i].pos_W_ = bodies_[bodies_[i].parent_].pos_W_ + bodies_[bodies_[i].parent_].rot_W_ * (bodies_[i].joint_.jointPos_B_+ bodies_[i].joint_.jointAxis_B_ * gc_[i + 6]); // i+6
           bodies_[i].rot_W_ = bodies_[bodies_[i].parent_].rot_W_ * bodies_[i].joint_.jointRot_B_ * Eigen::Matrix3d::Identity(); // need to check
           bodies_[i].joint_.S.head(3) = bodies_[i].rot_W_ * bodies_[i].joint_.jointAxis_B_;
           break;
@@ -212,11 +212,11 @@ public:
         M.block(j+5,0,1,6) = bodies_[j].joint_.S.transpose() * compositeMassInertia * ItoJMatrix * Eigen::MatrixXd::Identity(6,6); // Trunk의 subspace matrix는 6x6 indentity
         M.block(0,j+5,6,1) = M.block(j+5,0,1,6).transpose();
       }
-      compositeBody = getCompositeBody(bodies_[j - 1], compositeBody, gc_[j + 6]);
+      std::cout<< "bodies_" <<j <<"\n" << bodies_[j].pos_W_.transpose() << std::endl;
+      compositeBody = getCompositeBody(bodies_[j - 1], compositeBody, gc_[j + 6]); // j+6
       compositeMassInertia = getSpatialInertiaMatrix(compositeBody);
     }
     M.topLeftCorner(6,6) = compositeMassInertia;
-
     return M;
   }
 
@@ -245,11 +245,11 @@ inline Eigen::MatrixXd getMassMatrix(const Eigen::VectorXd &gc) {
                 Body::Joint::Type::fixed);
   bodies.push_back(getCompositeBody(trunk, imu_link, 0));
 
-  ////RL
-  Body hip(Eigen::Vector3d{0.022191, 0.015144, -1.5e-05}, 1.993,
-           GetInertiaMatrix(0.002903894, 7.185e-05, 1.262e-06, 0.004907517, -1.75e-06, 0.005586944), 0,
-           Eigen::Vector3d{-0.2399, 0.051, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{1, 0, 0},
-           Body::Joint::Type::prismatic);
+  ////FL
+  Body hip(Eigen::Vector3d{-0.022191, 0.015144, -1.5e-05}, 1.993,
+           GetInertiaMatrix(0.002903894, -7.185e-05, -1.262e-06, 0.004907517, -1.75e-06, 0.005586944), 0,
+           Eigen::Vector3d{0.2399, 0.051, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{1, 0, 0},
+           Body::Joint::Type::revolute);
   bodies.push_back(hip);
 
   Body thigh(Eigen::Vector3d{-0.005607, -0.003877, -0.048199}, 0.639,
@@ -261,7 +261,7 @@ inline Eigen::MatrixXd getMassMatrix(const Eigen::VectorXd &gc) {
   Body calf(Eigen::Vector3d{0.002781, 6.3e-05, -0.142518}, 0.207,
             GetInertiaMatrix(0.006341369, -3e-09, -8.7951e-05, 0.006355157, -1.336e-06, 3.9188e-05), 2,
             Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
-            Body::Joint::Type::prismatic);
+            Body::Joint::Type::revolute);
   Body foot(Eigen::Vector3d{0, 0, 0}, 0.06,
             GetInertiaMatrix(1.6854e-05, 0.0, 0.0, 1.6854e-05, 0.0, 1.6854e-05),2,
             Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(),
@@ -269,8 +269,11 @@ inline Eigen::MatrixXd getMassMatrix(const Eigen::VectorXd &gc) {
   bodies.push_back(getCompositeBody(calf, foot, 0));
 
 
+
   ArticulatedSystem railab(bodies);
   railab.computeForwardKinematics(gc);
+
+//  std::cout<< bodies[0].pos_W_ << "\n" << bodies[1].pos_W_ << "\n" << bodies[2].pos_W_ << "\n" << bodies[3].pos_W_ << std::endl;
 
 
 
