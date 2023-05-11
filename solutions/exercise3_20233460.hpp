@@ -6,7 +6,7 @@
 #include <iostream>
 
 ///////// Rotation Matrix /////////
-Eigen::Matrix3d RotM(const std::string &axis, const double &angle) {
+inline Eigen::Matrix3d RotM(const std::string &axis, const double &angle) {
   Eigen::Matrix3d Rot;
   if (axis == "x") {
     Rot << 1, 0, 0,
@@ -24,11 +24,9 @@ Eigen::Matrix3d RotM(const std::string &axis, const double &angle) {
   return Rot;
 }
 
-////// Quaternion To Rotation ////// quaternion값 맞나 확인 필요!!!!!!!!!!///////
-Eigen::Matrix3d QtoR(const Eigen::VectorXd &gc) {
+////// Quaternion To Rotation
+inline Eigen::Matrix3d QtoR(Eigen::Vector4d q) {
   Eigen::Matrix3d Rot;
-  Eigen::Vector4d q; // quaternion vector
-  for (int i = 0; i < 4; i++) q[i] = gc[i + 3];
 
   Rot << 2 * (pow(q[0], 2) + pow(q[1], 2)) - 1, 2 * (q[1] * q[2] - q[0] * q[3]), 2 * (q[1] * q[3] + q[0] * q[2]),
       2 * (q[1] * q[2] + q[0] * q[3]), 2 * (pow(q[0], 2) + pow(q[2], 2)) - 1, 2 * (q[2] * q[3] - q[0] * q[1]),
@@ -38,663 +36,337 @@ Eigen::Matrix3d QtoR(const Eigen::VectorXd &gc) {
 }
 
 ////// skew Symmetric Matrix
-Eigen::Matrix3d skewSymMat(const Eigen::Vector3d &vec) {
+inline Eigen::Matrix3d skewSymMat(const Eigen::Vector3d &vec) {
   Eigen::Matrix3d mat;
   mat << 0, -vec[2], vec[1], vec[2], 0, -vec[0], -vec[1], vec[0], 0;
   return mat;
 }
 
 ///// Make the Inertia Matrix using the half of the entries
-Eigen::Matrix3d GetInertiaMatrix(double ixx, double ixy, double ixz, double iyy, double iyz, double izz) {
+inline Eigen::Matrix3d GetInertiaMatrix(double ixx, double ixy, double ixz, double iyy, double iyz, double izz) {
   Eigen::Matrix3d I;
   I << ixx, ixy, ixz, ixy, iyy, iyz, ixz, iyz, izz;
   return I;
 }
 
-Eigen::Vector3d FR_HipToThigh, FR_FBaseToHip, FR_CalfToFoot, FR_ThighToCalf;
-Eigen::Vector3d FL_HipToThigh, FL_FBaseToHip, FL_CalfToFoot, FL_ThighToCalf;
-Eigen::Vector3d RR_HipToThigh, RR_FBaseToHip, RR_CalfToFoot, RR_ThighToCalf;
-Eigen::Vector3d RL_HipToThigh, RL_FBaseToHip, RL_CalfToFoot, RL_ThighToCalf;
-Eigen::Vector3d TrunkCOM;
-Eigen::Vector3d ImuCOM;
-Eigen::Vector3d TrunkImuCOM;
-Eigen::Vector3d p1, p2, p3;
-Eigen::Vector3d FR_HipCOM, FR_ThighCOM, FR_CalfCOM, FR_FootCOM, FR_CalfFootCOM;
-Eigen::Vector3d FL_HipCOM, FL_ThighCOM, FL_CalfCOM, FL_FootCOM, FL_CalfFootCOM;
-Eigen::Vector3d RR_HipCOM, RR_ThighCOM, RR_CalfCOM, RR_FootCOM, RR_CalfFootCOM;
-Eigen::Vector3d RL_HipCOM, RL_ThighCOM, RL_CalfCOM, RL_FootCOM, RL_CalfFootCOM;
-const double HipMass = 1.993, ThighMass = 0.639, CalfMass = 0.207, FootMass = 0.06, CalfFootMass = 0.207 + 0.06;
-const double TrunkMass = 9.041, ImuMass = 0.001, TrunkImuMass = 9.042;
+class Body {
+public:
+  class Joint {
+  public:
+    enum struct Type {
+      fixed=0,
+      floating,
+      revolute,
+      prismatic
+    };
 
+    /// variables
+    Eigen::Vector3d jointPos_W_;
+    Eigen::Vector3d jointAxis_W_;
+    Eigen::Matrix3d jointRot_W_;
+    Eigen::VectorXd S;
 
-Eigen::Vector3d RootP;
-Eigen::Matrix3d FR_CalfRot, FR_ThighRot, FR_HipRot;
-Eigen::Matrix3d FL_CalfRot, FL_ThighRot, FL_HipRot;
-Eigen::Matrix3d RR_CalfRot, RR_ThighRot, RR_HipRot;
-Eigen::Matrix3d RL_CalfRot, RL_ThighRot, RL_HipRot;
-Eigen::Matrix3d Roota;
+    /// definition
+    Eigen::Vector3d jointAxis_B_;
+    Eigen::Vector3d jointPos_B_;
+    Eigen::Matrix3d jointRot_B_;
+    Type type_;
+  };
 
+  // link
+  Eigen::Vector3d comPos_B_;
+  double mass_;
+  Eigen::Matrix3d inertia_B_;
+  size_t parent_;
 
-Eigen::Matrix3d FR_Calf_I, FR_Thigh_I, FR_Hip_I, FR_Foot_I, FR_CalfFoot_I;
-Eigen::Matrix3d FL_Calf_I, FL_Thigh_I, FL_Hip_I, FL_Foot_I, FL_CalfFoot_I;
-Eigen::Matrix3d RR_Calf_I, RR_Thigh_I, RR_Hip_I, RR_Foot_I, RR_CalfFoot_I;
-Eigen::Matrix3d RL_Calf_I, RL_Thigh_I, RL_Hip_I, RL_Foot_I, RL_CalfFoot_I;
-Eigen::Matrix3d Trunk_I, Imu_I, TrunkImu_I;
+  // joint
+//  Joint::Type type_;
+  Joint joint_;
 
-void getCurrentState(const Eigen::VectorXd &gc) { ///get robot configuration parameter form URDF & GC
-  p1 << 1, 0, 0;
-  p2 << 0, 1, 0;
-  p3 << 0, 1, 0;
+  // variables
+  Eigen::Vector3d pos_W_; /// nan 원인으로 얘 초기화 해줘야할듯
+  Eigen::Matrix3d rot_W_;
 
-  TrunkCOM << 0.008465, 0.004045, -0.000763;
-  ImuCOM << 0, 0, 0;
-  TrunkImuCOM = (TrunkMass * TrunkCOM + ImuMass * ImuCOM) / TrunkImuMass;
+  /// basic constructor
+  Body() {}
 
-  FR_HipCOM << -0.022191, -0.015144, -1.5e-05;
-  FR_ThighCOM << -0.005607, 0.003877, -0.048199;
-  FR_CalfCOM << 0.002781, 6.3e-05, -0.142518;
-  FR_FootCOM << 0, 0, -0.25;
-  FR_CalfFootCOM = (CalfMass * FR_CalfCOM + FootMass * FR_FootCOM) / CalfFootMass;
+  Body(Eigen::Vector3d comPos_B, double mass, Eigen::Matrix3d inertia_B, size_t parent,
+       Eigen::Vector3d jointPos_B, Eigen::Matrix3d jointRot_B, Eigen::Vector3d jointAxis_B,
+       Joint::Type type) {
+    comPos_B_ = comPos_B;
+    mass_ = mass;
+    inertia_B_ = inertia_B;
+    parent_ = parent;
+    joint_.jointPos_B_ = jointPos_B;
+    joint_.jointRot_B_ = jointRot_B;
+    joint_.jointAxis_B_ = jointAxis_B;
+    joint_.type_ = type;
+    joint_.S = Eigen::VectorXd::Zero(6);
+  }
 
-  FL_HipCOM << -0.022191, 0.015144, -1.5e-05;
-  FL_ThighCOM << -0.005607, -0.003877, -0.048199;
-  FL_CalfCOM << 0.002781, 6.3e-05, -0.142518;
-  FL_FootCOM << 0, 0, -0.25;
-  FL_CalfFootCOM = (CalfMass * FL_CalfCOM + FootMass * FL_FootCOM) / CalfFootMass;
+};
 
-  RR_HipCOM << 0.022191, -0.015144, -1.5e-05;
-  RR_ThighCOM << -0.005607, 0.003877, -0.048199;
-  RR_CalfCOM << 0.002781, 6.3e-05, -0.142518;
-  RR_FootCOM << 0, 0, -0.25;
-  RR_CalfFootCOM = (CalfMass * RR_CalfCOM + FootMass * RR_FootCOM) / CalfFootMass;
+inline Body getCompositeBody(const Body &parent, const Body &child, double gc) { //여기서 gc는 child.joint가 rotate joint면 돌려야하니깐 필요 각도
+  Eigen::Matrix3d skew1, skew2, rot;
+  Body compositeBody = parent;
+  compositeBody.mass_ = parent.mass_ + child.mass_;
 
-  RL_HipCOM << 0.022191, 0.015144, -1.5e-05;
-  RL_ThighCOM << -0.005607, -0.003877, -0.048199;
-  RL_CalfCOM << 0.002781, 6.3e-05, -0.142518;
-  RL_FootCOM << 0, 0, -0.25;
-  RL_CalfFootCOM = (CalfMass * RL_CalfCOM + FootMass * RL_FootCOM) / CalfFootMass;
+  // child.joint_.jointRot_B_ matrix는 사실 Identity, because 보통 붙어 있는 body들은 축이 돌아가 있지 않고 같은 방향을 보임 (child.axis가 시작부터 돌아있는 각을 뜻함)
+  // 일반적으로는 축이 돌아가 있지를 않아서 Identity
 
-  ///joint rotation
-  FR_HipRot = RotM("x", gc(7));
-  FR_ThighRot = RotM("y", gc(8));
-  FR_CalfRot = RotM("y", gc(9));
-  FL_HipRot = RotM("x", gc(10));
-  FL_ThighRot = RotM("y", 0); // Prismatic joint gc(11)
-  FL_CalfRot = RotM("y", gc(12));
-  RR_HipRot = RotM("x", gc(13));
-  RR_ThighRot = RotM("y", gc(14));
-  RR_CalfRot = RotM("y", gc(15));
-  RL_HipRot = RotM("x", 0); // Prismatic joint gc(16)
-  RL_ThighRot = RotM("y", 0); // Prismatic joint gc(17)
-  RL_CalfRot = RotM("y", 0); // Prismatic joint gc(18)
+  Eigen::Matrix3d childRot_parent_origin;
+  Eigen::Vector3d childComPos_parent_origin;
+//   parent joint 기준점으로 child.joint 거리에다가 회전이 반영된 child.body_com 까지 거리
+  if ( child.joint_.type_ == Body::Joint::Type::prismatic) {
+    childRot_parent_origin = child.joint_.jointRot_B_;
+    childComPos_parent_origin = (child.joint_.jointPos_B_ + child.joint_.jointRot_B_ * child.joint_.jointAxis_B_ * gc) + child.joint_.jointRot_B_ * child.comPos_B_;
+  } else {
+    rot = RotM(child.joint_.jointAxis_B_(0) == 1 ? "x" : child.joint_.jointAxis_B_(1) == 1 ? "y" : "z", gc);  // rot은 child body에 붙어있는 기준 joint가 rotate joint 이면 돌려야하니깐
+    childRot_parent_origin = child.joint_.jointRot_B_ * rot;
+    childComPos_parent_origin = (child.joint_.jointPos_B_) + childRot_parent_origin * child.comPos_B_;
+  }
 
-  ///distance between two joints
-  FR_FBaseToHip << 0.2399, -0.051, 0;
-  FR_HipToThigh << 0, -0.083, 0;
-  FR_ThighToCalf << 0, 0, -0.25;
-  FR_CalfToFoot << 0, 0, -0.25;
-  FL_FBaseToHip << 0.2399, 0.051, 0;
-  FL_HipToThigh << 0, 0.083+gc(11), 0;
-  FL_ThighToCalf << 0, 0 , -0.25;
-  FL_CalfToFoot << 0, 0, -0.25;
-  RR_FBaseToHip << -0.2399, -0.051, 0;
-  RR_HipToThigh << 0, -0.083, 0;
-  RR_ThighToCalf << 0, 0, -0.25;
-  RR_CalfToFoot << 0, 0, -0.25;
-  RL_FBaseToHip << -0.2399+gc(16), 0.051, 0;
-  RL_HipToThigh << 0 , 0.083+gc(17), 0;
-  RL_ThighToCalf << 0, 0+gc(18), -0.25;
-  RL_CalfToFoot << 0, 0, -0.25;
-  RootP << gc(0), gc(1), gc(2);
-  Roota = QtoR(gc);
+  compositeBody.comPos_B_ =
+      (parent.mass_ * parent.comPos_B_ + child.mass_ * childComPos_parent_origin) / compositeBody.mass_;
 
-  ///Inertia Tensor
-  Eigen::VectorXd T, I;
-  Eigen::VectorXd FR_H, FR_TH, FR_C, FR_F;
-  Eigen::VectorXd FL_H, FL_TH, FL_C, FL_F;
-  Eigen::VectorXd RR_H, RR_TH, RR_C, RR_F;
-  Eigen::VectorXd RL_H, RL_TH, RL_C, RL_F;
+  skew1 = skewSymMat(parent.comPos_B_ - compositeBody.comPos_B_);
+  skew2 = skewSymMat(childComPos_parent_origin - compositeBody.comPos_B_);
+  compositeBody.inertia_B_ =
+      parent.inertia_B_ + childRot_parent_origin * child.inertia_B_ * childRot_parent_origin.transpose()
+      - parent.mass_ * skew1 * skew1 - child.mass_ * skew2 * skew2;
 
-  Trunk_I = GetInertiaMatrix(0.033260231, -0.000451628, 0.000487603, 0.16117211, 4.8356e-05, 0.17460442);
-  Imu_I = GetInertiaMatrix(0.0001, 0, 0, 0.000001, 0, 0.0001);
-  Eigen::Vector3d r1 = TrunkCOM - TrunkImuCOM;
-  Eigen::Vector3d r2 = ImuCOM - TrunkImuCOM;
-  TrunkImu_I =
-      Trunk_I + Imu_I - TrunkMass * skewSymMat(r1) * skewSymMat(r1) - ImuMass * skewSymMat(r2) * skewSymMat(r2);
-
-  FR_Hip_I = GetInertiaMatrix(0.002903894, 7.185e-05, -1.262e-06, 0.004907517, 1.75e-06, 0.005586944);
-  FR_Thigh_I = GetInertiaMatrix(0.005666803, -3.597e-06, 0.000491446, 0.005847229, -1.0086e-05, 0.000369811);
-  FR_Calf_I = GetInertiaMatrix(0.006341369, -3e-09, -8.7951e-05, 0.006355157, -1.336e-06, 3.9188e-05);
-  FR_Foot_I = GetInertiaMatrix(1.6854e-05, 0.0, 0.0, 1.6854e-05, 0.0, 1.6854e-05);
-  Eigen::Vector3d r3 = FR_CalfCOM - FR_CalfFootCOM;
-  Eigen::Vector3d r4 = FR_FootCOM - FR_CalfFootCOM;
-  FR_CalfFoot_I =
-      FR_Calf_I + FR_Foot_I - CalfMass * skewSymMat(r3) * skewSymMat(r3) - FootMass * skewSymMat(r4) * skewSymMat(r4);
-
-  FL_Hip_I = GetInertiaMatrix(0.002903894, -7.185e-05, -1.262e-06, 0.004907517, -1.75e-06, 0.005586944);
-  FL_Thigh_I = GetInertiaMatrix(0.005666803, 3.597e-06, 0.000491446, 0.005847229, 1.0086e-05, 0.000369811);
-  FL_Calf_I = GetInertiaMatrix(0.006341369, -3e-09, -8.7951e-05, 0.006355157, -1.336e-06, 3.9188e-05);
-  FL_Foot_I = GetInertiaMatrix(1.6854e-05, 0.0, 0.0, 1.6854e-05, 0.0, 1.6854e-05);
-  Eigen::Vector3d r5 = FL_CalfCOM - FL_CalfFootCOM;
-  Eigen::Vector3d r6 = FL_FootCOM - FL_CalfFootCOM;
-  FL_CalfFoot_I =
-      FL_Calf_I + FL_Foot_I - CalfMass * skewSymMat(r5) * skewSymMat(r5) - FootMass * skewSymMat(r6) * skewSymMat(r6);
-
-  RR_Hip_I = GetInertiaMatrix(0.002903894, -7.185e-05, 1.262e-06, 0.004907517, 1.75e-06, 0.005586944);
-  RR_Thigh_I = GetInertiaMatrix(0.005666803, -3.597e-06, 0.000491446, 0.005847229, -1.0086e-05, 0.000369811);
-  RR_Calf_I = GetInertiaMatrix(0.006341369, -3e-09, -8.7951e-05, 0.006355157, -1.336e-06, 3.9188e-05);
-  RR_Foot_I = GetInertiaMatrix(1.6854e-05, 0.0, 0.0, 1.6854e-05, 0.0, 1.6854e-05);
-  Eigen::Vector3d r7 = RR_CalfCOM - RR_CalfFootCOM;
-  Eigen::Vector3d r8 = RR_FootCOM - RR_CalfFootCOM;
-  RR_CalfFoot_I =
-      RR_Calf_I + RR_Foot_I - CalfMass * skewSymMat(r7) * skewSymMat(r7) - FootMass * skewSymMat(r8) * skewSymMat(r8);
-
-
-  RL_Hip_I = GetInertiaMatrix(0.002903894, 7.185e-05, 1.262e-06, 0.004907517, -1.75e-06, 0.005586944);
-  RL_Thigh_I = GetInertiaMatrix(0.005666803, 3.597e-06, 0.000491446, 0.005847229, 1.0086e-05, 0.000369811);
-  RL_Calf_I = GetInertiaMatrix(0.006341369, -3e-09, -8.7951e-05, 0.006355157, -1.336e-06, 3.9188e-05);
-  RL_Foot_I = GetInertiaMatrix(1.6854e-05, 0.0, 0.0, 1.6854e-05, 0.0, 1.6854e-05);
-  Eigen::Vector3d r9 = RL_CalfCOM - RL_CalfFootCOM;
-  Eigen::Vector3d r10 = RL_FootCOM - RL_CalfFootCOM;
-  RL_CalfFoot_I =
-      RL_Calf_I + RL_Foot_I - CalfMass * skewSymMat(r9) * skewSymMat(r9) - FootMass * skewSymMat(r10) * skewSymMat(r10);
-
+  return compositeBody;
 }
 
-double Mass(int index) { // TrunkImuMass & CalfFootMass are composite bodies.
-  if (index == 0) {
-    return TrunkImuMass;
-  } else if (index == 1 || index == 4 || index == 7 || index == 10) {
-    return HipMass;
-  } else if (index == 2 || index == 5 || index == 8 || index == 11) {
-    return ThighMass;
-  } else if (index == 3 || index == 6 || index == 9 || index == 12) {
-    return CalfFootMass;
-  } else {
-    std::cout << "invalid mass index";
-    return 0;
-  }
+inline Eigen::MatrixXd getSpatialInertiaMatrix(const Body &body) {
+  Eigen::Matrix3d skew;
+  Eigen::MatrixXd spatial_inertia_matrix(6, 6);
+  spatial_inertia_matrix.setZero();
+
+  // pill in the each entries
+  spatial_inertia_matrix.topLeftCorner(3, 3) = body.mass_ * Eigen::Matrix3d::Identity();
+  skew = skewSymMat(body.rot_W_ * body.comPos_B_);
+  spatial_inertia_matrix.bottomLeftCorner(3, 3) = body.mass_ * skew;
+  spatial_inertia_matrix.topRightCorner(3, 3) = -spatial_inertia_matrix.bottomLeftCorner(3, 3);
+  spatial_inertia_matrix.bottomRightCorner(3, 3) = body.rot_W_ * body.inertia_B_ * body.rot_W_.transpose()
+                                                   - body.mass_ * skew * skew;
+
+  return spatial_inertia_matrix;
 }
 
-/// joint Position with repsect to world frame
-Eigen::Vector3d getJointAbsPos(const Eigen::VectorXd &gc, int index1, int index2) {
-  //index1 : FR #1 FL #2 RR #3 RL #4
-  //index2 : Hip #1 Thigh #2 Calf #3 Foot #4
+class ArticulatedSystem {
+public:
+  ArticulatedSystem(std::vector<Body> bodies) { bodies_ = bodies; }
 
-  Eigen::Vector3d FBaseToHip;
-  Eigen::Vector3d HipToThigh;
-  Eigen::Vector3d CalfToFoot;
-  Eigen::Vector3d ThighToCalf;
+  void computeForwardKinematics(const Eigen::VectorXd &gc) {
+    gc_ = gc;
+    Eigen::Matrix3d rotMat; // temporary variable to save the matrix
+    bodies_[0].pos_W_ = gc_.head(3);
+    bodies_[0].rot_W_ = QtoR(gc.segment(3, 4));
 
-  Eigen::Matrix3d HipRot;
-  Eigen::Matrix3d ThighRot;
-  Eigen::Matrix3d CalfRot;
-
-  if (index1 == 0) {
-    return RootP;
-  } else if (index1 == 1) {
-    FBaseToHip = FR_FBaseToHip;
-    HipToThigh = FR_HipToThigh;
-    CalfToFoot = FR_CalfToFoot;
-    ThighToCalf = FR_ThighToCalf;
-    HipRot = FR_HipRot;
-    ThighRot = FR_ThighRot;
-    CalfRot = FR_CalfRot;
-  } else if (index1 == 2) {
-    FBaseToHip = FL_FBaseToHip;
-    HipToThigh = FL_HipToThigh;
-    CalfToFoot = FL_CalfToFoot;
-    ThighToCalf = FL_ThighToCalf;
-    HipRot = FL_HipRot;
-    ThighRot = FL_ThighRot;
-    CalfRot = FL_CalfRot;
-  } else if (index1 == 3) {
-    FBaseToHip = RR_FBaseToHip;
-    HipToThigh = RR_HipToThigh;
-    CalfToFoot = RR_CalfToFoot;
-    ThighToCalf = RR_ThighToCalf;
-    HipRot = RR_HipRot;
-    ThighRot = RR_ThighRot;
-    CalfRot = RR_CalfRot;
-  } else if (index1 == 4) {
-    FBaseToHip = RL_FBaseToHip;
-    HipToThigh = RL_HipToThigh;
-    CalfToFoot = RL_CalfToFoot;
-    ThighToCalf = RL_ThighToCalf;
-    HipRot = RL_HipRot;
-    ThighRot = RL_ThighRot;
-    CalfRot = RL_CalfRot;
-  } else {
-    return Eigen::Vector3d::Zero();
-  }
-
-  if (index2 == 1) { ///hip
-    return RootP + Roota * FBaseToHip;
-  } else if (index2 == 2) { ///thigh
-    return RootP + Roota * (FBaseToHip + HipRot * HipToThigh);
-  } else if (index2 == 3) { ///calf
-    return RootP + Roota * (FBaseToHip + HipRot * (HipToThigh + ThighRot * ThighToCalf));
-  } else if (index2 == 4) { ///foot
-    return RootP + Roota * (FBaseToHip + HipRot * (HipToThigh + ThighRot * (ThighToCalf + CalfRot * CalfToFoot)));
-  } else {
-    return RootP;
-//    return Eigen::Vector3d::Zero();
-  }
-}
-
-/// COM Position of link with repsect to world frame
-Eigen::Vector3d getCOMAbsPos(const Eigen::VectorXd &gc, int index1, int index2) {
-  //index1 : Trunk #0 FR #1 FL #2 RR #3 RL #4
-  //index2 : Hip #1 Thigh #2 CalfFoot #3
-
-  Eigen::Vector3d HipCOM;
-  Eigen::Vector3d ThighCOM;
-  Eigen::Vector3d CalfFootCOM;
-
-  Eigen::Matrix3d HipRot;
-  Eigen::Matrix3d ThighRot;
-  Eigen::Matrix3d CalfRot;
-
-  if (index1 == 0) {
-    return RootP + Roota * TrunkImuCOM;
-  } else if (index1 == 1) {
-    HipRot = FR_HipRot;
-    ThighRot = FR_ThighRot;
-    CalfRot = FR_CalfRot;
-    HipCOM = FR_HipCOM;
-    ThighCOM = FR_ThighCOM;
-    CalfFootCOM = FR_CalfFootCOM;
-  } else if (index1 == 2) {
-    HipRot = FL_HipRot;
-    ThighRot = FL_ThighRot;
-    CalfRot = FL_CalfRot;
-    HipCOM = FL_HipCOM;
-    ThighCOM = FL_ThighCOM;
-    CalfFootCOM = FL_CalfFootCOM;
-  } else if (index1 == 3) {
-    HipRot = RR_HipRot;
-    ThighRot = RR_ThighRot;
-    CalfRot = RR_CalfRot;
-    HipCOM = RR_HipCOM;
-    ThighCOM = RR_ThighCOM;
-    CalfFootCOM = RR_CalfFootCOM;
-  } else if (index1 == 4) {
-    HipRot = RL_HipRot;
-    ThighRot = RL_ThighRot;
-    CalfRot = RL_CalfRot;
-    HipCOM = RL_HipCOM;
-    ThighCOM = RL_ThighCOM;
-    CalfFootCOM = RL_CalfFootCOM ;
-  } else {
-    return Eigen::Vector3d::Zero();
-  }
-
-  if (index2 == 1) { ///hip
-    return getJointAbsPos(gc, index1, index2) + Roota * HipRot * HipCOM; // 해당 joint까지 오고 거기서 COM만큼 더감.
-  } else if (index2 == 2) { ///thigh
-    return getJointAbsPos(gc, index1, index2) + Roota * HipRot * ThighRot * ThighCOM; // 해당 joint까지 오고 거기서 COM만큼 더감.
-  } else if (index2 == 3) { ///calf
-    return getJointAbsPos(gc, index1, index2) +
-           Roota * HipRot * ThighRot * CalfRot * CalfFootCOM; // 해당 joint까지 오고 거기서 COM만큼 더감.
-  } else {
-    return Eigen::Vector3d::Zero();
-  }
-}
-
-/// Axis of each joints w.r.t world frame after all rotation
-Eigen::Vector3d getRotAxis_w(int index1, int index2) {
-  //index1 : FR #1 FL #2 RR #3 RL #4
-  //index2 : Hip #1 Thigh #2 Calf #3 Foot #4
-  //Prismatic (2,2/4,1/4,2/4,3)
-  if (index1 == 1) {
-
-    if (index2 == 1) return Roota * p1;
-    else if (index2 == 2) return Roota * FR_HipRot * p2;
-    else if (index2 == 3) return Roota * FR_HipRot * FR_ThighRot * p3;
-    else {
-      std::cout << "invalid rot index";
-      return Eigen::Vector3d::Zero();
+    for (int i = 0; i < bodies_.size(); i++) { //사실상 world 기준 joint pos & rot 구하는거
+      switch (bodies_[i].joint_.type_) { // // bodies_[bodies_[i].parent_] : body의 index가 parent 때문에 index 하나 내려감 (parent index로 적힘)
+//        case (Body::Joint::Type::floating) :
+//          bodies_[i].pos_W_ = gc_.head(3);
+//          bodies_[i].rot_W_ = QtoR(gc.segment(3, 4));
+//          break;
+        case (Body::Joint::Type::fixed) :
+          bodies_[i].pos_W_ = bodies_[bodies_[i].parent_].pos_W_ + bodies_[i].joint_.jointPos_B_;
+          bodies_[i].rot_W_ = bodies_[bodies_[i].parent_].rot_W_ * bodies_[i].joint_.jointRot_B_;
+          break;
+        case (Body::Joint::Type::revolute) :
+          bodies_[i].pos_W_ =
+              bodies_[bodies_[i].parent_].pos_W_ + bodies_[bodies_[i].parent_].rot_W_ * bodies_[i].joint_.jointPos_B_;
+          bodies_[i].rot_W_ = bodies_[bodies_[i].parent_].rot_W_ * bodies_[i].joint_.jointRot_B_
+                              * RotM(bodies_[i].joint_.jointAxis_B_(0) == 1 ? "x" : bodies_[i].joint_.jointAxis_B_(1) == 1 ? "y" : "z",gc_[i + 6]);
+          bodies_[i].joint_.S.tail(3) = bodies_[i].rot_W_ * bodies_[i].joint_.jointAxis_B_;
+//          std::cout<< "bodies_[parent]"<<bodies_[bodies_[i].parent_].pos_W_.transpose() <<std::endl;
+//          std::cout<< "bodies_[joint "<<i<<"]"<<bodies_[i].joint_.jointPos_B_.transpose() <<std::endl;
+//          std::cout<< "bodies_["<<i<<"]"<<bodies_[i].pos_W_.transpose() <<std::endl;
+          break;
+        case (Body::Joint::Type::prismatic) :
+          bodies_[i].pos_W_ = bodies_[bodies_[i].parent_].pos_W_ + bodies_[bodies_[i].parent_].rot_W_ * (bodies_[i].joint_.jointPos_B_ + bodies_[i].joint_.jointAxis_B_ * gc_[i + 6]);
+          bodies_[i].rot_W_ = bodies_[bodies_[i].parent_].rot_W_ * bodies_[i].joint_.jointRot_B_ * Eigen::Matrix3d::Identity(); // 마지막은 prismatic이니까 Identity matrix
+          bodies_[i].joint_.S.head(3) = bodies_[i].rot_W_ * bodies_[i].joint_.jointAxis_B_;
+//          std::cout<< "bodies_["<<i<<"]"<<bodies_[i].pos_W_.transpose() <<std::endl;
+          break;
+      }
     }
+  }
+  Eigen::MatrixXd getMassMatrix() {
+    Eigen::MatrixXd M; // final mass matrix
+    Eigen::MatrixXd compositeMassInertia; // 6x6 composite mass inertia matrix
+    Eigen::MatrixXd skew;
+    Body compositeBody;
+    std::vector<Body> temporary; // temperory buffer
 
-  } else if (index1 == 2) {
+    M.setZero(gc_.size() - 1 ,gc_.size() - 1 );
+    compositeMassInertia.setZero(6,6);
 
-    if (index2 == 1) return Roota * p1;
-    else if (index2 == 2) return Roota * FL_HipRot * p2;
-    else if (index2 == 3) return Roota * FL_HipRot * FL_ThighRot * p3;
-    else {
-      std::cout << "invalid rot index";
-      return Eigen::Vector3d::Zero();
+    for (int leg=3; leg>-1 ; leg--){
+    compositeBody = bodies_[3*leg+3];
+    compositeMassInertia = getSpatialInertiaMatrix(compositeBody);
+      for (int j =3*leg+3 ; j>3*leg ; j--){ // j>0은 이유는 body_link는 spatial로 만들어놨고 그 위로 만들려고
+        for (int i=3*leg+1; i<=j; i++) { // j는 구하려는 COM_link, i는 j기준으로 joint 한칸씩 올라올려고
+          Eigen::MatrixXd ItoJMatrix(6,6);
+          ItoJMatrix.setIdentity();
+          skew = skewSymMat(bodies_[j].pos_W_ - bodies_[i].pos_W_);
+          ItoJMatrix.topRightCorner(3,3) = -skew;
+          M(i+5,j+5) = bodies_[j].joint_.S.transpose() * compositeMassInertia * ItoJMatrix * bodies_[i].joint_.S;
+          M(j+5,i+5) = M(i+5,j+5); // 대칭part도 만들어줌
+
+          skew = skewSymMat(bodies_[j].pos_W_ - bodies_[0].pos_W_);
+          ItoJMatrix.topRightCorner(3,3) = -skew;
+          M.block(j+5,0,1,6) = bodies_[j].joint_.S.transpose() * compositeMassInertia * ItoJMatrix * Eigen::MatrixXd::Identity(6,6); // Trunk의 subspace matrix는 6x6 indentity
+          M.block(0,j+5,6,1) = M.block(j+5,0,1,6).transpose();
+        }
+        if(j==1|j==4|j==7|j==10){
+          temporary.push_back(compositeBody);
+          compositeBody = getCompositeBody(bodies_[0], compositeBody, gc_[j + 6]); // j+6
+          compositeMassInertia = getSpatialInertiaMatrix(compositeBody);
+        } else {
+          compositeBody = getCompositeBody(bodies_[j - 1], compositeBody, gc_[j + 6]); // j+6
+          compositeMassInertia = getSpatialInertiaMatrix(compositeBody);
+        }
+        // compositeBody = getCompositeBody((j==1|j==4|j==7|j==10) ? bodies_[0] : bodies_[j - 1], compositeBody, gc_[j + 6]); // j+6
+        // compositeMassInertia = getSpatialInertiaMatrix(compositeBody);
+      }
     }
+    /// 이 부분은 우선 하드코딩시켜놨는데 for loop으로 하자!
+    compositeBody = getCompositeBody(bodies_[0],temporary[0],gc_[16]); // RL->RR->FL->FR 순서의 힙 gc필요
+    compositeBody = getCompositeBody(compositeBody,temporary[1],gc_[13]);
+    compositeBody = getCompositeBody(compositeBody,temporary[2],gc_[10]);
+    compositeBody = getCompositeBody(compositeBody,temporary[3],gc_[7]);
+    compositeMassInertia = getSpatialInertiaMatrix(compositeBody);
 
-  } else if (index1 == 3) {
-
-    if (index2 == 1) return Roota * p1;
-    else if (index2 == 2) return Roota * RR_HipRot * p2;
-    else if (index2 == 3) return Roota * RR_HipRot * RR_ThighRot * p3;
-    else {
-      std::cout << "invalid rot index";
-      return Eigen::Vector3d::Zero();
-    }
-
-  } else if (index1 == 4) {
-
-    if (index2 == 1) return Roota * p1;
-    else if (index2 == 2) return Roota * RL_HipRot * p2;
-    else if (index2 == 3) return Roota * RL_HipRot * RL_ThighRot * p3;
-    else {
-      std::cout << "invalid rot index";
-      return Eigen::Vector3d::Zero();
-    }
-
-  } else {
-    std::cout << "invalid rot index";
-    return Eigen::Vector3d::Zero();
+    M.topLeftCorner(6,6) = compositeMassInertia;
+    return M;
   }
-}
 
-/// Get Inertia changing from the each Frame to the world Frame
-Eigen::Matrix3d getInertiaTensor_w(const Eigen::VectorXd &gc, int index) {
-  /// For Trunk /// I(B) = R_(B/A) * I(A) * R_(B/A)^T /// B/A 는 from Frame(A) to Frame(B)
-  if (index == 0) {
-    return Roota * TrunkImu_I * Roota.transpose();
-  }
-    /// For FR
-  else if (index == 1) {
-    return (Roota * FR_HipRot) * FR_Hip_I * (Roota * FR_HipRot).transpose();
-  } else if (index == 2) {
-    return (Roota * FR_HipRot * FR_ThighRot) * FR_Thigh_I * (Roota * FR_HipRot * FR_ThighRot).transpose();
-  } else if (index == 3) {
-    return (Roota * FR_HipRot * FR_ThighRot * FR_CalfRot) * FR_CalfFoot_I *
-           (Roota * FR_HipRot * FR_ThighRot * FR_CalfRot).transpose();
-  }/// For FL
-  else if (index == 4) {
-    return (Roota * FL_HipRot) * FL_Hip_I * (Roota * FL_HipRot).transpose();
-  } else if (index == 5) {
-    return (Roota * FL_HipRot * FL_ThighRot) * FL_Thigh_I * (Roota * FL_HipRot * FL_ThighRot).transpose();
-  } else if (index == 6) {
-    return (Roota * FL_HipRot * FL_ThighRot * FL_CalfRot) * FL_CalfFoot_I *
-           (Roota * FL_HipRot * FL_ThighRot * FL_CalfRot).transpose();
-  }/// For RR
-  else if (index == 7) {
-    return (Roota * RR_HipRot) * RR_Hip_I * (Roota * RR_HipRot).transpose();
-  } else if (index == 8) {
-    return (Roota * RR_HipRot * RR_ThighRot) * RR_Thigh_I * (Roota * RR_HipRot * RR_ThighRot).transpose();
-  } else if (index == 9) {
-    return (Roota * RR_HipRot * RR_ThighRot * RR_CalfRot) * RR_CalfFoot_I *
-           (Roota * RR_HipRot * RR_ThighRot * RR_CalfRot).transpose();
-  }/// For RL
-  else if (index == 10) {
-    return (Roota * RL_HipRot) * RL_Hip_I * (Roota * RL_HipRot).transpose();
-  } else if (index == 11) {
-    return (Roota * RL_HipRot * RL_ThighRot) * RL_Thigh_I * (Roota * RL_HipRot * RL_ThighRot).transpose();
-  } else if (index == 12) {
-    return (Roota * RL_HipRot * RL_ThighRot * RL_CalfRot) * RL_CalfFoot_I *
-           (Roota * RL_HipRot * RL_ThighRot * RL_CalfRot).transpose();
-  } else {
-    std::cout << "invalid joint index";
-    return Eigen::Matrix3d::Zero();
-  }
-}
 
-/// Get Positional Jacobian at each Joints which are hip,thigh and calf joints
-Eigen::MatrixXd getJointPosJ(const Eigen::VectorXd &gc, int index) {
-  Eigen::MatrixXd J(3, 18);
-  Eigen::Matrix3d I3 = Eigen::Matrix3d::Identity();
-  Eigen::Matrix3d Z3 = Eigen::Matrix3d::Zero(); /// For pedding
-  Eigen::Vector3d z3 = Eigen::Vector3d::Zero();
-  Eigen::Vector3d r1, r2, r3;
+private:
+  std::vector<Body> bodies_;
+  Eigen::VectorXd gc_;
 
-  switch (index) {
-    case 0: /// Base
-      J << I3, Z3, Z3, Z3, Z3, Z3;
-      break;
-    case 1: /// FR_H : 1-1
-      r1 = getJointAbsPos(gc,1,1)- getJointAbsPos(gc,0,0); // 몸통에서 FR_H까지 거리
-      J << I3,-skewSymMat(r1),Z3,Z3,Z3,Z3;
-      break;
-    case 2: ///FR_TH 1-2
-      r1 = getJointAbsPos(gc,1,2)- getJointAbsPos(gc,0,0);
-      r2 = getJointAbsPos(gc,1,2)- getJointAbsPos(gc,1,1);
-      J<< I3,-1*skewSymMat(r1), -1*skewSymMat(r2)*getRotAxis_w(1,1),z3,z3,Z3,Z3,Z3; // P_vector is written w.r.t. the world frame.
-    case 3: ///FR_C 1-3
-      r1 = getJointAbsPos(gc, 1, 3) - getJointAbsPos(gc, 0, 0);
-      r2 = getJointAbsPos(gc, 1, 3) - getJointAbsPos(gc, 1, 1);
-      r3 = getJointAbsPos(gc, 1, 3) - getJointAbsPos(gc, 1, 2);
-      J << I3, -1*skewSymMat(r1), -1*skewSymMat(r2)*getRotAxis_w(1,1), -1*skewSymMat(r3)* getRotAxis_w(1,2),z3,Z3,Z3,Z3;
-      break;
-    case 4: ///FL_H 2-1
-      r1 = getJointAbsPos(gc, 2, 1) - getJointAbsPos(gc, 0, 0);
-      J << I3, -1 * skewSymMat(r1),Z3,Z3,Z3,Z3;
-      break;
-    case 5: ///FL_TH 2-2
-      r1 = getJointAbsPos(gc, 2, 2) - getJointAbsPos(gc, 0, 0);
-      r2 = getJointAbsPos(gc, 2, 2) - getJointAbsPos(gc, 2, 1);
-      J << I3, -1*skewSymMat(r1),Z3, -1*skewSymMat(r2)*getRotAxis_w(2,1),z3,z3,Z3,Z3;
-      break;
-    case 6: ///FL_C 2-3
-      r1 = getJointAbsPos(gc, 2, 3) - getJointAbsPos(gc, 0, 0);
-      r2 = getJointAbsPos(gc, 2, 3) - getJointAbsPos(gc, 2, 1);
-      r3 = getJointAbsPos(gc, 2, 3) - getJointAbsPos(gc, 2, 2);
-      J << I3, -1*skewSymMat(r1),Z3, -1*skewSymMat(r2)*getRotAxis_w(2,1), getRotAxis_w(2,2),z3,Z3,Z3; // thigh_prismatic 적용
-      break;
-    case 7: ///RR_H 3-1
-      r1 = getJointAbsPos(gc, 3, 1) - getJointAbsPos(gc, 0, 0);
-      J << I3, -1 * skewSymMat(r1),Z3,Z3,Z3,Z3;
-      break;
-    case 8: ///RR_TH 3-2
-      r1 = getJointAbsPos(gc, 3, 2) - getJointAbsPos(gc, 0, 0);
-      r2 = getJointAbsPos(gc, 3, 2) - getJointAbsPos(gc, 3, 1);
-      J << I3, -1*skewSymMat(r1),Z3,Z3, -1*skewSymMat(r2)*getRotAxis_w(3,1),z3,z3,Z3;
-      break;
-    case 9: ///RR_C 3-3
-      r1 = getJointAbsPos(gc, 3, 3) - getJointAbsPos(gc, 0, 0);
-      r2 = getJointAbsPos(gc, 3, 3) - getJointAbsPos(gc, 3, 1);
-      r3 = getJointAbsPos(gc, 3, 3) - getJointAbsPos(gc, 3, 2);
-      J << I3, -1*skewSymMat(r1),Z3,Z3, -1*skewSymMat(r2)*getRotAxis_w(3,1), -1*skewSymMat(r3)* getRotAxis_w(3,2),z3,Z3;
-      break;
-    case 10: ///RL_H 4-1
-      r1 = getJointAbsPos(gc, 4, 1) - getJointAbsPos(gc, 0, 0);
-      J << I3, -1 * skewSymMat(r1),Z3,Z3,Z3,Z3;
-      break;
-    case 11: ///RL_TH 4-2
-      r1 = getJointAbsPos(gc, 4, 2) - getJointAbsPos(gc, 0, 0);
-      r2 = getJointAbsPos(gc, 4, 2) - getJointAbsPos(gc, 4, 1); // prismatic이라 상대적 거리는 안씀
-      J << I3, -1*skewSymMat(r1),Z3,Z3,Z3, getRotAxis_w(4,1),z3,z3;
-      break;
-    case 12: ///RL_C 4-3
-      r1 = getJointAbsPos(gc, 4, 3) - getJointAbsPos(gc, 0, 0);
-      r2 = getJointAbsPos(gc, 4, 3) - getJointAbsPos(gc, 4, 1);
-      r3 = getJointAbsPos(gc, 4, 3) - getJointAbsPos(gc, 4, 2);
-      J << I3, -1*skewSymMat(r1),Z3,Z3,Z3, getRotAxis_w(4,1), getRotAxis_w(4,2),z3;
-      break;
-    default:
-      std::cout<<"invalid joint index";
-      break;
-  }
-  return J;
-}
-
-/// Get Positional Jacobian at COM Of each Links which are hip,thigh and calf Links
-Eigen::MatrixXd getLinkCOMPosJ(const Eigen::VectorXd &gc, int index){
-  Eigen::MatrixXd J(3, 18);
-  Eigen::Matrix3d I3 = Eigen::Matrix3d::Identity();
-  Eigen::Matrix3d Z3 = Eigen::Matrix3d::Zero(); ///zero matrix for pedding
-  Eigen::Vector3d z3 = Eigen::Vector3d::Zero();
-  Eigen::Vector3d r1, r2, r3, r4;
-
-  switch(index) {
-    case 0: ///TrunkImu
-      r1 = getCOMAbsPos(gc, 0, 0) - getJointAbsPos(gc, 0, 0);
-      J << I3, -1 * skewSymMat(r1),Z3,Z3,Z3,Z3;
-      break;
-    case 1: ///FR_H 1-1
-      r1 = getCOMAbsPos(gc, 1, 1) - getJointAbsPos(gc, 0, 0);
-      r2 = getCOMAbsPos(gc,1,1) - getJointAbsPos(gc,1,1);
-      J << I3, -1 * skewSymMat(r1),-1*skewSymMat(r2)*getRotAxis_w(1,1), z3,z3,Z3,Z3,Z3;
-      break;
-    case 2: ///FR_TH 1-2
-      r1 = getCOMAbsPos(gc, 1, 2) - getJointAbsPos(gc, 0, 0);
-      r2 = getCOMAbsPos(gc, 1, 2)- getJointAbsPos(gc, 1, 1);
-      r3 = getCOMAbsPos(gc, 1, 2)- getJointAbsPos(gc, 1, 2);
-      J << I3, -1*skewSymMat(r1), -1*skewSymMat(r2)*getRotAxis_w(1,1),-1*skewSymMat(r3)* getRotAxis_w(1,2),z3,Z3,Z3,Z3;
-      break;
-    case 3: ///FR_C+F 1-3
-      r1 = getCOMAbsPos(gc, 1, 3) - getJointAbsPos(gc, 0, 0);
-      r2 = getCOMAbsPos(gc, 1, 3)- getJointAbsPos(gc, 1, 1);
-      r3 = getCOMAbsPos(gc, 1, 3)- getJointAbsPos(gc, 1, 2);
-      r4 = getCOMAbsPos(gc, 1, 3)- getJointAbsPos(gc, 1, 3);
-      J << I3, -1*skewSymMat(r1), -1*skewSymMat(r2)*getRotAxis_w(1,1), -1*skewSymMat(r3)* getRotAxis_w(1,2),-1*skewSymMat(r4)* getRotAxis_w(1,3),Z3,Z3,Z3;
-      break;
-    case 4: ///FL_H 2-1
-      r1 = getCOMAbsPos(gc, 2, 1) - getJointAbsPos(gc, 0, 0);
-      r2 = getCOMAbsPos(gc,2,1) - getJointAbsPos(gc,2,1);
-      J << I3, -1 * skewSymMat(r1), Z3, -1*skewSymMat(r2)*getRotAxis_w(2,1), z3,z3,Z3,Z3;
-      break;
-    case 5: ///FL_TH 2-2
-      r1 = getCOMAbsPos(gc, 2, 2) - getJointAbsPos(gc, 0, 0);
-      r2 = getCOMAbsPos(gc, 2, 2)- getJointAbsPos(gc, 2, 1);
-      r3 = getCOMAbsPos(gc, 2, 2)- getJointAbsPos(gc, 2, 2);
-      J << I3, -1*skewSymMat(r1), Z3, -1*skewSymMat(r2)*getRotAxis_w(2,1),getRotAxis_w(2,2),z3,Z3,Z3;
-      break;
-    case 6: ///FL_C+F 2-3
-      r1 = getCOMAbsPos(gc, 2, 3) - getJointAbsPos(gc, 0, 0);
-      r2 = getCOMAbsPos(gc, 2, 3)- getJointAbsPos(gc, 2, 1);
-      r3 = getCOMAbsPos(gc, 2, 3)- getJointAbsPos(gc, 2, 2);
-      r4 = getCOMAbsPos(gc, 2, 3)- getJointAbsPos(gc, 2, 3);
-      J << I3, -1*skewSymMat(r1), Z3, -1*skewSymMat(r2)*getRotAxis_w(2,1), getRotAxis_w(2,2),-1*skewSymMat(r4)* getRotAxis_w(2,3),Z3,Z3;
-      break;
-    case 7: ///RR_H 3-1
-      r1 = getCOMAbsPos(gc, 3, 1) - getJointAbsPos(gc, 0, 0);
-      r2 = getCOMAbsPos(gc,3,1) - getJointAbsPos(gc,3,1);
-      J << I3, -1 * skewSymMat(r1), Z3, Z3,-1*skewSymMat(r2)*getRotAxis_w(3,1), z3,z3,Z3;
-      break;
-    case 8: ///RR_TH 3-2
-      r1 = getCOMAbsPos(gc, 3, 2) - getJointAbsPos(gc, 0, 0);
-      r2 = getCOMAbsPos(gc, 3, 2)- getJointAbsPos(gc, 3, 1);
-      r3 = getCOMAbsPos(gc, 3, 2)- getJointAbsPos(gc, 3, 2);
-      J << I3, -1*skewSymMat(r1), Z3, Z3, -1*skewSymMat(r2)*getRotAxis_w(3,1),-1*skewSymMat(r3)* getRotAxis_w(3,2),z3,Z3;
-      break;
-    case 9: ///RR_C+F 3-3
-      r1 = getCOMAbsPos(gc, 3, 3) - getJointAbsPos(gc, 0, 0);
-      r2 = getCOMAbsPos(gc, 3, 3)- getJointAbsPos(gc, 3, 1);
-      r3 = getCOMAbsPos(gc, 3, 3)- getJointAbsPos(gc, 3, 2);
-      r4 = getCOMAbsPos(gc, 3, 3)- getJointAbsPos(gc, 3, 3);
-      J << I3, -1*skewSymMat(r1), Z3, Z3, -1*skewSymMat(r2)*getRotAxis_w(3,1), -1*skewSymMat(r3)* getRotAxis_w(3,2),-1*skewSymMat(r4)* getRotAxis_w(3,3),Z3;
-      break;
-    case 10: ///RL_H 4-1
-      r1 = getCOMAbsPos(gc, 4, 1) - getJointAbsPos(gc, 0, 0);
-      r2 = getCOMAbsPos(gc,4,1) - getJointAbsPos(gc,4,1);
-      J << I3, -1 * skewSymMat(r1), Z3, Z3,Z3, getRotAxis_w(4,1), z3,z3;
-      break;
-    case 11: ///RL_TH 4-2
-      r1 = getCOMAbsPos(gc, 4, 2) - getJointAbsPos(gc, 0, 0);
-      r2 = getCOMAbsPos(gc, 4, 2)- getJointAbsPos(gc, 4, 1);
-      r3 = getCOMAbsPos(gc, 4, 2)- getJointAbsPos(gc, 4, 2);
-      J << I3, -1*skewSymMat(r1), Z3, Z3,Z3, getRotAxis_w(4,1),getRotAxis_w(4,2),z3;
-      break;
-    case 12: ///RL_C+F 4-3
-      r1 = getCOMAbsPos(gc, 4, 3) - getJointAbsPos(gc, 0, 0);
-      r2 = getCOMAbsPos(gc, 4, 3)- getJointAbsPos(gc, 4, 1);
-      r3 = getCOMAbsPos(gc, 4, 3)- getJointAbsPos(gc, 4, 2);
-      r4 = getCOMAbsPos(gc, 4, 3)- getJointAbsPos(gc, 4, 3);
-      J << I3, -1*skewSymMat(r1), Z3, Z3,Z3, getRotAxis_w(4,1), getRotAxis_w(4,2),getRotAxis_w(4,3);
-      break;
-    default:
-      std::cout<<"invalid body index";
-      break;
-  }
-  return J;
-}
-
-/// Get Angular Jacobian at each Joints which are hip,thigh and calf joints
-Eigen::MatrixXd getJointAngJ(const Eigen::VectorXd &gc, int index) {
-  Eigen::MatrixXd J(3, 18);
-  Eigen::Matrix3d I3 = Eigen::Matrix3d::Identity();
-  Eigen::Matrix3d Z3 = Eigen::Matrix3d::Zero(); ///zero matrix for pedding
-  Eigen::Vector3d z3 = Eigen::Vector3d::Zero();
-  switch (index) {
-    case 0: ///Base
-      J << Z3, I3, Z3, Z3, Z3, Z3;
-      break;
-    case 1: ///FR_H 1-1
-      J << Z3, I3, getRotAxis_w(1, 1), z3, z3, Z3, Z3, Z3;
-      break;
-    case 2: ///FR_TH 1-2
-      J << Z3, I3, getRotAxis_w(1, 1), getRotAxis_w(1, 2), z3, Z3, Z3, Z3;
-      break;
-    case 3: ///FR_C 1-3
-      J << Z3, I3, getRotAxis_w(1, 1), getRotAxis_w(1, 2), getRotAxis_w(1, 3), Z3, Z3, Z3;
-      break;
-    case 4: ///FL_H 2-1
-      J << Z3, I3, Z3, getRotAxis_w(2, 1), z3, z3, Z3, Z3;
-      break;
-    case 5: ///FL_TH 2-2
-      J << Z3, I3, Z3, getRotAxis_w(2, 1), z3, z3, Z3, Z3;
-      break;
-    case 6: ///FL_C 2-3
-      J << Z3, I3, Z3, getRotAxis_w(2, 1), z3, getRotAxis_w(2, 3), Z3, Z3;
-      break;
-    case 7: ///RR_H 3-1
-      J << Z3, I3, Z3, Z3, getRotAxis_w(3, 1), z3, z3, Z3;
-      break;
-    case 8: ///RR_TH 3-2
-      J << Z3, I3, Z3, Z3, getRotAxis_w(3, 1), getRotAxis_w(3, 2), z3, Z3;
-      break;
-    case 9: ///RR_C 3-3
-      J << Z3, I3, Z3, Z3, getRotAxis_w(3, 1), getRotAxis_w(3, 2), getRotAxis_w(3, 3), Z3;
-      break;
-    case 10: ///RL_H 4-1
-      J << Z3, I3, Z3, Z3, Z3, Z3;
-      break;
-    case 11: ///RL_TH 4-2
-      J << Z3, I3, Z3, Z3, Z3, Z3;
-      break;
-    case 12: ///RL_C 4-3
-      J << Z3, I3, Z3, Z3, Z3, Z3;
-      break;
-    default:
-      std::cout << "invalid joint index";
-      break;
-  }
-  return J;
-}
-
-/// Get the Velocity of each joint, Vector3d = {X,Y,Z}
-Eigen::Vector3d getFrameVel(const Eigen::VectorXd& gc, const Eigen::VectorXd& gv, int index){
-  Eigen::Vector3d V;
-
-  V = getJointPosJ(gc,index) * gv;
-  return V;
-}
-
-/// Get the Velocity of COM of the Link, Vector3d = {X,Y,Z}
-Eigen::Vector3d getCOMVel(const Eigen::VectorXd& gc, const Eigen::VectorXd& gv, int index){
-  Eigen::Vector3d VC;
-
-  VC = getLinkCOMPosJ(gc,index) * gv;
-  return VC;
-}
-
-/// Get the Angular Velocity of each joint, Vector3d = {W_x, W_y, W_z}
-Eigen::Vector3d getFrameAngVel(const Eigen::VectorXd& gc, const Eigen::VectorXd& gv, int index){
-  Eigen::Vector3d W;
-
-  W = getJointAngJ(gc,index) * gv;
-  return W;
-}
+};
 
 
 inline Eigen::MatrixXd getMassMatrix(const Eigen::VectorXd &gc) {
 
   /// !!!!!!!!!! NO RAISIM FUNCTIONS HERE !!!!!!!!!!!!!!!!!
 
-  getCurrentState(gc);
-  Eigen::MatrixXd M(18,18);
-  M.setZero();
-  for (int i=0; i<13; i++){
+  std::vector<Body> bodies;
+  Body trunk(Eigen::Vector3d{0.008465, 0.004045, -0.000763}, 9.041,
+             GetInertiaMatrix(0.033260231, -0.000451628, 0.000487603, 0.16117211, 4.8356e-05, 0.17460442), 0,
+             Eigen::Vector3d::Zero(), Eigen::Matrix3d::Zero(), Eigen::Vector3d::Zero(),
+             Body::Joint::Type::floating);
+  Body imu_link(Eigen::Vector3d{0, 0, 0}, 0.001,
+                GetInertiaMatrix(0.0001, 0, 0, 0.000001, 0, 0.0001), 0,
+                Eigen::Vector3d{0, 0, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(),
+                Body::Joint::Type::fixed);
+  bodies.push_back(getCompositeBody(trunk, imu_link, 0));
 
-    M += ((getLinkCOMPosJ(gc,i).transpose()*Mass(i)*getLinkCOMPosJ(gc,i)) + (getJointAngJ(gc,i).transpose()*getInertiaTensor_w(gc,i)*getJointAngJ(gc,i)));
-  }
+  /// 이 부분은 우선 하드코딩시켜놨는데 for loop으로 하자! ////
+  ////FR
+  Body FR_hip(Eigen::Vector3d{-0.022191, -0.015144, -1.5e-05}, 1.993,
+              GetInertiaMatrix(0.002903894, 7.185e-05, -1.262e-06, 0.004907517, 1.75e-06, 0.005586944), 0,
+              Eigen::Vector3d{0.2399, -0.051, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{1, 0, 0},
+              Body::Joint::Type::revolute);
+  bodies.push_back(FR_hip);
 
-  return M;
+  Body FR_thigh(Eigen::Vector3d{-0.005607, 0.003877, -0.048199}, 0.639,
+                GetInertiaMatrix(0.005666803, -3.597e-06, 0.000491446, 0.005847229, -1.0086e-05, 0.000369811), 1,
+                Eigen::Vector3d{0, -0.083, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+                Body::Joint::Type::revolute);
+  bodies.push_back(FR_thigh);
+
+  Body FR_calf(Eigen::Vector3d{0.002781, 6.3e-05, -0.142518}, 0.207,
+               GetInertiaMatrix(0.006341369, -3e-09, -8.7951e-05, 0.006355157, -1.336e-06, 3.9188e-05), 2,
+               Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+               Body::Joint::Type::revolute);
+  Body FR_foot(Eigen::Vector3d{0, 0, 0}, 0.06,
+               GetInertiaMatrix(1.6854e-05, 0.0, 0.0, 1.6854e-05, 0.0, 1.6854e-05),2,
+               Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(),
+               Body::Joint::Type::fixed);
+  bodies.push_back(getCompositeBody(FR_calf, FR_foot, 0));
+
+      ////FL
+  Body FL_hip(Eigen::Vector3d{-0.022191, 0.015144, -1.5e-05}, 1.993,
+                  GetInertiaMatrix(0.002903894, -7.185e-05, -1.262e-06, 0.004907517, -1.75e-06, 0.005586944), 0,
+                  Eigen::Vector3d{0.2399, 0.051, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{1, 0, 0},
+                  Body::Joint::Type::revolute);
+  bodies.push_back(FL_hip);
+
+  Body FL_thigh(Eigen::Vector3d{-0.005607, -0.003877, -0.048199}, 0.639,
+                GetInertiaMatrix(0.005666803, 3.597e-06, 0.000491446, 0.005847229, 1.0086e-05, 0.000369811), 4,
+                Eigen::Vector3d{0, 0.083, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+                Body::Joint::Type::prismatic);
+  bodies.push_back(FL_thigh);
+
+  Body FL_calf(Eigen::Vector3d{0.002781, 6.3e-05, -0.142518}, 0.207,
+               GetInertiaMatrix(0.006341369, -3e-09, -8.7951e-05, 0.006355157, -1.336e-06, 3.9188e-05), 5,
+               Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+               Body::Joint::Type::revolute);
+  Body FL_foot(Eigen::Vector3d{0, 0, 0}, 0.06,
+               GetInertiaMatrix(1.6854e-05, 0.0, 0.0, 1.6854e-05, 0.0, 1.6854e-05),5,
+               Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(),
+               Body::Joint::Type::fixed);
+  bodies.push_back(getCompositeBody(FL_calf, FL_foot, 0));
+
+      ////RR
+  Body RR_hip(Eigen::Vector3d{0.022191, -0.015144, -1.5e-05}, 1.993,
+                  GetInertiaMatrix(0.002903894, -7.185e-05, 1.262e-06, 0.004907517, 1.75e-06, 0.005586944), 0,
+                  Eigen::Vector3d{-0.2399, -0.051, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{1, 0, 0},
+                  Body::Joint::Type::revolute);
+  bodies.push_back(RR_hip);
+
+  Body RR_thigh(Eigen::Vector3d{-0.005607, 0.003877, -0.048199}, 0.639,
+                GetInertiaMatrix(0.005666803, -3.597e-06, 0.000491446, 0.005847229, -1.0086e-05, 0.000369811), 7,
+                Eigen::Vector3d{0, -0.083, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+                Body::Joint::Type::revolute);
+  bodies.push_back(RR_thigh);
+
+  Body RR_calf(Eigen::Vector3d{0.002781, 6.3e-05, -0.142518}, 0.207,
+               GetInertiaMatrix(0.006341369, -3e-09, -8.7951e-05, 0.006355157, -1.336e-06, 3.9188e-05), 8,
+               Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+               Body::Joint::Type::revolute);
+  Body RR_foot(Eigen::Vector3d{0, 0, 0}, 0.06,
+               GetInertiaMatrix(1.6854e-05, 0.0, 0.0, 1.6854e-05, 0.0, 1.6854e-05),8,
+               Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(),
+               Body::Joint::Type::fixed);
+  bodies.push_back(getCompositeBody(RR_calf, RR_foot, 0));
+      ////RL
+  Body RL_hip(Eigen::Vector3d{0.022191, 0.015144, -1.5e-05}, 1.993,
+                  GetInertiaMatrix(0.002903894, 7.185e-05, 1.262e-06, 0.004907517, -1.75e-06, 0.005586944), 0,
+                  Eigen::Vector3d{-0.2399, 0.051, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{1, 0, 0},
+                  Body::Joint::Type::prismatic);
+  bodies.push_back(RL_hip);
+
+  Body RL_thigh(Eigen::Vector3d{-0.005607, -0.003877, -0.048199}, 0.639,
+                GetInertiaMatrix(0.005666803, 3.597e-06, 0.000491446, 0.005847229, 1.0086e-05, 0.000369811), 10,
+                Eigen::Vector3d{0, 0.083, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+                Body::Joint::Type::prismatic);
+  bodies.push_back(RL_thigh);
+
+  Body RL_calf(Eigen::Vector3d{0.002781, 6.3e-05, -0.142518}, 0.207,
+               GetInertiaMatrix(0.006341369, -3e-09, -8.7951e-05, 0.006355157, -1.336e-06, 3.9188e-05), 11,
+               Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{0, 1, 0},
+               Body::Joint::Type::prismatic);
+  Body RL_foot(Eigen::Vector3d{0, 0, 0}, 0.06,
+               GetInertiaMatrix(1.6854e-05, 0.0, 0.0, 1.6854e-05, 0.0, 1.6854e-05),11,
+               Eigen::Vector3d{0, 0, -0.25}, Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(),
+               Body::Joint::Type::fixed);
+  bodies.push_back(getCompositeBody(RL_calf, RL_foot, 0));
+
+  ArticulatedSystem railab(bodies);
+  railab.computeForwardKinematics(gc);
+
+//  for (int i=0;i<bodies.size();i++){
+//    std::cout << "bodies["<<i<<"] = "<<bodies[i].pos_W_.transpose()<<std::endl;
+//  std::cout << static_cast<int>(bodies[i].joint_.type_) <<std::endl;
+//  }
+
+
+
+  return railab.getMassMatrix();
 }
