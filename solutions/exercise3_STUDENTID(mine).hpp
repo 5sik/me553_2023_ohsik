@@ -232,10 +232,13 @@ public:
         // compositeMassInertia = getSpatialInertiaMatrix(compositeBody);
       }
     }
-    for(int i=0;i<4;i++){
-      compositeBody = getCompositeBody(bodies_[0],temporary[i],gc_[16-3*i]); // RL->RR->FL->FR 순서의 힙 gc필요
-      compositeMassInertia = getSpatialInertiaMatrix(compositeBody);
-    }
+
+    compositeBody = getCompositeBody(bodies_[0],temporary[0],gc_[16]); // RL->RR->FL->FR 순서의 힙 gc필요
+    compositeBody = getCompositeBody(compositeBody,temporary[1],gc_[13]);
+    compositeBody = getCompositeBody(compositeBody,temporary[2],gc_[10]);
+    compositeBody = getCompositeBody(compositeBody,temporary[3],gc_[7]);
+    compositeMassInertia = getSpatialInertiaMatrix(compositeBody);
+
     M.topLeftCorner(6,6) = compositeMassInertia;
     return M;
   }
@@ -287,7 +290,7 @@ inline Eigen::MatrixXd getMassMatrix(const Eigen::VectorXd &gc) {
   bodies.push_back(getCompositeBody(FR_calf, FR_foot, 0));
 
       ////FL
-      Body FL_hip(Eigen::Vector3d{-0.022191, 0.015144, -1.5e-05}, 1.993,
+  Body FL_hip(Eigen::Vector3d{-0.022191, 0.015144, -1.5e-05}, 1.993,
                   GetInertiaMatrix(0.002903894, -7.185e-05, -1.262e-06, 0.004907517, -1.75e-06, 0.005586944), 0,
                   Eigen::Vector3d{0.2399, 0.051, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{1, 0, 0},
                   Body::Joint::Type::revolute);
@@ -310,7 +313,7 @@ inline Eigen::MatrixXd getMassMatrix(const Eigen::VectorXd &gc) {
   bodies.push_back(getCompositeBody(FL_calf, FL_foot, 0));
 
       ////RR
-      Body RR_hip(Eigen::Vector3d{0.022191, -0.015144, -1.5e-05}, 1.993,
+  Body RR_hip(Eigen::Vector3d{0.022191, -0.015144, -1.5e-05}, 1.993,
                   GetInertiaMatrix(0.002903894, -7.185e-05, 1.262e-06, 0.004907517, 1.75e-06, 0.005586944), 0,
                   Eigen::Vector3d{-0.2399, -0.051, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{1, 0, 0},
                   Body::Joint::Type::revolute);
@@ -332,7 +335,7 @@ inline Eigen::MatrixXd getMassMatrix(const Eigen::VectorXd &gc) {
                Body::Joint::Type::fixed);
   bodies.push_back(getCompositeBody(RR_calf, RR_foot, 0));
       ////RL
-      Body RL_hip(Eigen::Vector3d{0.022191, 0.015144, -1.5e-05}, 1.993,
+  Body RL_hip(Eigen::Vector3d{0.022191, 0.015144, -1.5e-05}, 1.993,
                   GetInertiaMatrix(0.002903894, 7.185e-05, 1.262e-06, 0.004907517, -1.75e-06, 0.005586944), 0,
                   Eigen::Vector3d{-0.2399, 0.051, 0}, Eigen::Matrix3d::Identity(), Eigen::Vector3d{1, 0, 0},
                   Body::Joint::Type::prismatic);
