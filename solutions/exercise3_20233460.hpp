@@ -161,15 +161,15 @@ public:
   void computeForwardKinematics(const Eigen::VectorXd &gc) {
     gc_ = gc;
     Eigen::Matrix3d rotMat; // temporary variable to save the matrix
-    bodies_[0].pos_W_ = gc_.head(3);
-    bodies_[0].rot_W_ = QtoR(gc.segment(3, 4));
+//    bodies_[0].pos_W_ = gc_.head(3);
+//    bodies_[0].rot_W_ = QtoR(gc.segment(3, 4));
 
     for (int i = 0; i < bodies_.size(); i++) { //사실상 world 기준 joint pos & rot 구하는거
       switch (bodies_[i].joint_.type_) { // // bodies_[bodies_[i].parent_] : body의 index가 parent 때문에 index 하나 내려감 (parent index로 적힘)
-//        case (Body::Joint::Type::floating) :
-//          bodies_[i].pos_W_ = gc_.head(3);
-//          bodies_[i].rot_W_ = QtoR(gc.segment(3, 4));
-//          break;
+        case (Body::Joint::Type::floating) :
+          bodies_[i].pos_W_ = gc_.head(3);
+          bodies_[i].rot_W_ = QtoR(gc.segment(3, 4));
+          break;
         case (Body::Joint::Type::fixed) :
           bodies_[i].pos_W_ = bodies_[bodies_[i].parent_].pos_W_ + bodies_[i].joint_.jointPos_B_;
           bodies_[i].rot_W_ = bodies_[bodies_[i].parent_].rot_W_ * bodies_[i].joint_.jointRot_B_;
@@ -200,7 +200,7 @@ public:
     Body compositeBody;
     std::vector<Body> temporary; // temperory buffer
 
-    M.setZero(gc_.size() - 1 ,gc_.size() - 1 );
+    M.setZero(gc_.size() - 1 ,gc_.size() - 1 ); /// gv쓰게 되면 gc_.size()-1 을 gv로 바꾸기
     compositeMassInertia.setZero(6,6);
 
     for (int leg=3; leg>-1 ; leg--){
