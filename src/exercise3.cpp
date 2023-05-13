@@ -5,7 +5,9 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "exercise3_20233460.hpp"
+//#include "exercise3_20233460(hardcoding).hpp"
 //#include "test.hpp"
+//#include "test_mass.hpp"
 
 #define _MAKE_STR(x) __MAKE_STR(x)
 #define __MAKE_STR(x) #x
@@ -23,7 +25,7 @@ int main(int argc, char* argv[]) {
   // kinova configuration
   Eigen::VectorXd gc(aliengo->getGeneralizedCoordinateDim()), gv(aliengo->getDOF());
 //  gc << 0, 0, 0.54, 1.0, 0.0, 0.0, 0.0, 0.03, 0.4, -0.8, -0.03, 0.4, -0.8, 0.03, -0.4, 0.8, -0.03, -0.4, 0.8; /// Jemin: I'll randomize the gc, gv when grading
-  gc << 0, 0, 0.54, 1.0, 0.0, 0.0, 0.0, 0.5, 0.1, -0.28,  0.5, 0.1, -0.28,  0.5, 0.1, -0.28,  0.5, 0.1, -0.28;
+  gc << 0, 0, 0.54, 1.0,0.0,0.0,0.0, 0.5, 0.1, -0.28,  0.5, 0.1, -0.28,  0.5, 0.1, -0.28,  0.5, 0.1, -0.28;
   gv << 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8;
   aliengo->setState(gc, gv);
 
@@ -38,7 +40,7 @@ int main(int argc, char* argv[]) {
 //  std::cout<< "pos : "<< footPosition.e().transpose()<< std::endl;
 
 
-//  std::cout<<"mass matrix which I found is \n"<< getMassMatrix(gc) <<std::endl;
+  std::cout<<"mass matrix which I found is \n"<< getMassMatrix(gc) <<std::endl;
 //
 //  std::cout<<"mass matrix should be \n"<< aliengo->getMassMatrix().e()<<std::endl;
 //  std::cout<<"\n"<<"----------------------------"<<std::endl;

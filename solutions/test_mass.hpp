@@ -80,11 +80,12 @@ public:
   size_t parent_;
 
   // joint
+//  Joint::Type type_;
   Joint joint_;
 
   // variables
-  Eigen::Vector3d comPos_W_;
-  Eigen::Matrix3d comRot_W_;
+  Eigen::Vector3d pos_W_; /// nan 원인으로 얘 초기화 해줘야할듯
+  Eigen::Matrix3d rot_W_;
 
   /// basic constructor
   Body() {}
@@ -144,10 +145,10 @@ inline Eigen::MatrixXd getSpatialInertiaMatrix(const Body &body) {
 
   // pill in the each entries
   spatial_inertia_matrix.topLeftCorner(3, 3) = body.mass_ * Eigen::Matrix3d::Identity();
-  skew = skewSymMat(body.joint_.jointRot_W_ * body.comPos_B_);
+  skew = skewSymMat(body.rot_W_ * body.comPos_B_);
   spatial_inertia_matrix.bottomLeftCorner(3, 3) = body.mass_ * skew;
   spatial_inertia_matrix.topRightCorner(3, 3) = -spatial_inertia_matrix.bottomLeftCorner(3, 3);
-  spatial_inertia_matrix.bottomRightCorner(3, 3) = body.joint_.jointRot_W_ * body.inertia_B_ * body.joint_.jointRot_W_.transpose()
+  spatial_inertia_matrix.bottomRightCorner(3, 3) = body.rot_W_ * body.inertia_B_ * body.rot_W_.transpose()
                                                    - body.mass_ * skew * skew;
 
   return spatial_inertia_matrix;
@@ -166,27 +167,27 @@ public:
     for (int i = 0; i < bodies_.size(); i++) { //사실상 world 기준 joint pos & rot 구하는거
       switch (bodies_[i].joint_.type_) { // // bodies_[bodies_[i].parent_] : body의 index가 parent 때문에 index 하나 내려감 (parent index로 적힘)
         case (Body::Joint::Type::floating) :
-          bodies_[i].joint_.jointPos_W_ = gc_.head(3);
-          bodies_[i].joint_.jointRot_W_ = QtoR(gc.segment(3, 4));
+          bodies_[i].pos_W_ = gc_.head(3);
+          bodies_[i].rot_W_ = QtoR(gc.segment(3, 4));
           break;
         case (Body::Joint::Type::fixed) :
-          bodies_[i].joint_.jointPos_W_ = bodies_[bodies_[i].parent_].joint_.jointPos_W_ + bodies_[i].joint_.jointPos_B_;
-          bodies_[i].joint_.jointRot_W_ = bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointRot_B_;
+          bodies_[i].pos_W_ = bodies_[bodies_[i].parent_].pos_W_ + bodies_[i].joint_.jointPos_B_;
+          bodies_[i].rot_W_ = bodies_[bodies_[i].parent_].rot_W_ * bodies_[i].joint_.jointRot_B_;
           break;
         case (Body::Joint::Type::revolute) :
-          bodies_[i].joint_.jointPos_W_ =
-              bodies_[bodies_[i].parent_].joint_.jointPos_W_ + bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointPos_B_;
-          bodies_[i].joint_.jointRot_W_ = bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointRot_B_
-                                          * RotM(bodies_[i].joint_.jointAxis_B_(0) == 1 ? "x" : bodies_[i].joint_.jointAxis_B_(1) == 1 ? "y" : "z",gc_[i + 6]);
-          bodies_[i].joint_.S.tail(3) = bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_;
+          bodies_[i].pos_W_ =
+              bodies_[bodies_[i].parent_].pos_W_ + bodies_[bodies_[i].parent_].rot_W_ * bodies_[i].joint_.jointPos_B_;
+          bodies_[i].rot_W_ = bodies_[bodies_[i].parent_].rot_W_ * bodies_[i].joint_.jointRot_B_
+                              * RotM(bodies_[i].joint_.jointAxis_B_(0) == 1 ? "x" : bodies_[i].joint_.jointAxis_B_(1) == 1 ? "y" : "z",gc_[i + 6]);
+          bodies_[i].joint_.S.tail(3) = bodies_[i].rot_W_ * bodies_[i].joint_.jointAxis_B_;
 //          std::cout<< "bodies_[parent]"<<bodies_[bodies_[i].parent_].pos_W_.transpose() <<std::endl;
 //          std::cout<< "bodies_[joint "<<i<<"]"<<bodies_[i].joint_.jointPos_B_.transpose() <<std::endl;
 //          std::cout<< "bodies_["<<i<<"]"<<bodies_[i].pos_W_.transpose() <<std::endl;
           break;
         case (Body::Joint::Type::prismatic) :
-          bodies_[i].joint_.jointPos_W_ = bodies_[bodies_[i].parent_].joint_.jointPos_W_ + bodies_[bodies_[i].parent_].joint_.jointRot_W_ * (bodies_[i].joint_.jointPos_B_ + bodies_[i].joint_.jointAxis_B_ * gc_[i + 6]);
-          bodies_[i].joint_.jointRot_W_ = bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointRot_B_ * Eigen::Matrix3d::Identity(); // 마지막은 prismatic이니까 Identity matrix
-          bodies_[i].joint_.S.head(3) = bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_;
+          bodies_[i].pos_W_ = bodies_[bodies_[i].parent_].pos_W_ + bodies_[bodies_[i].parent_].rot_W_ * (bodies_[i].joint_.jointPos_B_ + bodies_[i].joint_.jointAxis_B_ * gc_[i + 6]);
+          bodies_[i].rot_W_ = bodies_[bodies_[i].parent_].rot_W_ * bodies_[i].joint_.jointRot_B_ * Eigen::Matrix3d::Identity(); // 마지막은 prismatic이니까 Identity matrix
+          bodies_[i].joint_.S.head(3) = bodies_[i].rot_W_ * bodies_[i].joint_.jointAxis_B_;
 //          std::cout<< "bodies_["<<i<<"]"<<bodies_[i].pos_W_.transpose() <<std::endl;
           break;
       }
@@ -209,12 +210,12 @@ public:
         for (int i=3*leg+1; i<=j; i++) { // j는 구하려는 COM_link, i는 j기준으로 joint 한칸씩 올라올려고
           Eigen::MatrixXd ItoJMatrix(6,6);
           ItoJMatrix.setIdentity();
-          skew = skewSymMat(bodies_[j].joint_.jointPos_W_ - bodies_[i].joint_.jointPos_W_);
+          skew = skewSymMat(bodies_[j].pos_W_ - bodies_[i].pos_W_);
           ItoJMatrix.topRightCorner(3,3) = -skew;
           M(i+5,j+5) = bodies_[j].joint_.S.transpose() * compositeMassInertia * ItoJMatrix * bodies_[i].joint_.S;
           M(j+5,i+5) = M(i+5,j+5); // 대칭part도 만들어줌
 
-          skew = skewSymMat(bodies_[j].joint_.jointPos_W_ - bodies_[0].joint_.jointPos_W_);
+          skew = skewSymMat(bodies_[j].pos_W_ - bodies_[0].pos_W_);
           ItoJMatrix.topRightCorner(3,3) = -skew;
           M.block(j+5,0,1,6) = bodies_[j].joint_.S.transpose() * compositeMassInertia * ItoJMatrix * Eigen::MatrixXd::Identity(6,6); // Trunk의 subspace matrix는 6x6 indentity
           M.block(0,j+5,6,1) = M.block(j+5,0,1,6).transpose();
