@@ -160,7 +160,7 @@ public:
   void computeForwardKinematics(const Eigen::VectorXd &gc) {
     gc_ = gc;
     Eigen::Matrix3d rotMat; // temporary variable to save the matrix
-//    bodies_[0].pos_W_ = gc_.head(3);
+//    bodies_[0].pos_W_ = gc_.head(3);  -> 이것은 아래의 for loop에서 floating에서 처리됨
 //    bodies_[0].rot_W_ = QtoR(gc.segment(3, 4));
 
     for (int i = 0; i < bodies_.size(); i++) { //사실상 world 기준 joint pos & rot 구하는거
