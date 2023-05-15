@@ -226,6 +226,10 @@ public:
                                              parent_omega * bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_ * gv_[i + 5];
           bodies_[i].joint_.S_dot.tail(3) =
               parent_omega * bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_;
+
+//          std::cout<<"bodies["<<i<<"] "<<"Linear_vel = " <<bodies_[i].joint_.jointLinVel_W_.transpose() << std::endl;
+//          std::cout<<"bodies["<<i<<"] "<<"Angular_vel = " <<bodies_[i].joint_.jointAngVel_W_.transpose() << std::endl;
+//          std::cout<<"bodies["<<i<<"] "<<"Linear_acc = " <<bodies_[i].joint_.jointLinAcc_W_.transpose() << std::endl;
           break;
         case (Body::Joint::Type::prismatic) :
           bodies_[i].joint_.jointPos_W_ = bodies_[bodies_[i].parent_].joint_.jointPos_W_ +
@@ -236,14 +240,19 @@ public:
           bodies_[i].joint_.S.head(3) = bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_;
           bodies_[i].joint_.jointLinVel_W_ = bodies_[bodies_[i].parent_].joint_.jointLinVel_W_
                                              + parent_omega * bodies_[bodies_[i].parent_].joint_.jointRot_W_ * (bodies_[i].joint_.jointPos_B_ + bodies_[i].joint_.jointAxis_B_ * gc_[i + 6])
-                                             + bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_ * gv_[i + 5];
+                                               + bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_ * gv_[i + 5];
+//                                             + bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_ * gv_[i + 5];
           bodies_[i].joint_.jointAngVel_W_ = bodies_[bodies_[i].parent_].joint_.jointAngVel_W_;
-          bodies_[i].joint_.jointLinAcc_W_ = bodies_[bodies_[i].parent_].joint_.jointLinVel_W_ + parent_alpha * bodies_[bodies_[i].parent_].joint_.jointRot_W_ * (bodies_[i].joint_.jointPos_B_ + bodies_[i].joint_.jointAxis_B_ * gc_[i + 6])
+          bodies_[i].joint_.jointLinAcc_W_ = bodies_[bodies_[i].parent_].joint_.jointLinAcc_W_ + parent_alpha * bodies_[bodies_[i].parent_].joint_.jointRot_W_ * (bodies_[i].joint_.jointPos_B_ + bodies_[i].joint_.jointAxis_B_ * gc_[i + 6])
                                              + parent_omega * parent_omega * bodies_[bodies_[i].parent_].joint_.jointRot_W_ *(bodies_[i].joint_.jointPos_B_ + bodies_[i].joint_.jointAxis_B_ * gc_[i + 6])
-                                             + parent_omega * bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_ * gv_[i + 5];
+                                             + 2* parent_omega * bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_ * gv_[i + 5];
           bodies_[i].joint_.jointAngAcc_W_ = bodies_[bodies_[i].parent_].joint_.jointAngAcc_W_;
           bodies_[i].joint_.S_dot.head(3) =
               parent_omega * bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_;
+
+//          std::cout<<"bodies["<<i<<"] "<<"Linear_vel = " <<bodies_[i].joint_.jointLinVel_W_.transpose() << std::endl;
+//          std::cout<<"bodies["<<i<<"] "<<"Angular_vel = " <<bodies_[i].joint_.jointAngVel_W_.transpose() << std::endl;
+//          std::cout<<"bodies["<<i<<"] "<<"Linear_acc = " <<bodies_[i].joint_.jointLinAcc_W_.transpose() << std::endl;
           break;
       }
       bodies_[i].comPos_W_ = bodies_[i].joint_.jointRot_W_ * bodies_[i].comPos_B_;
@@ -324,13 +333,13 @@ public:
       temporary.push_back(wrench);
     }
     acc << bodies_[0].joint_.jointLinAcc_W_, bodies_[0].joint_.jointAngAcc_W_;
-    wrench.setZero(6);
+    wrench = temporary[0] + temporary[1] + temporary[2] + temporary[3];
     wrench.tail(3) += skewSymMat(bodies_[0].joint_.jointRot_W_ * bodies_[10].joint_.jointPos_B_)*temporary[0].head(3);
     wrench.tail(3) += skewSymMat(bodies_[0].joint_.jointRot_W_ * bodies_[7].joint_.jointPos_B_)*temporary[1].head(3);
     wrench.tail(3) += skewSymMat(bodies_[0].joint_.jointRot_W_ * bodies_[4].joint_.jointPos_B_)*temporary[2].head(3);
     wrench.tail(3) += skewSymMat(bodies_[0].joint_.jointRot_W_ * bodies_[1].joint_.jointPos_B_)*temporary[3].head(3);
     wrench += getSpatialInertiaMatrix(bodies_[0])*acc + getFictitiousForces(bodies_[0]);
-    b.head(6) = wrench;
+    b.head(6) = Eigen::MatrixXd::Identity(6,6).transpose() * wrench;
 
     return b;
   }

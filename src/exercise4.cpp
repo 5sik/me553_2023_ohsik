@@ -27,15 +27,29 @@ int main(int argc, char* argv[]) {
   /// if you are using an old version of Raisim, you need this line
   world.integrate1();
   aliengo->getMassMatrix();
+  aliengo->setComputeInverseDynamics(true);
 
-//  std::cout<< ((getNonlinearities(gc, gv) - aliengo->getNonlinearities({0,0,-9.81}).e())).transpose() <<std::endl;
-  std::cout<<"my nonlinearities is  \n"<<getNonlinearities(gc, gv).transpose()<<std::endl;
-  std::cout<<"nonlinearities should be \n"<< aliengo->getNonlinearities({0,0,-9.81}).e().transpose()<<std::endl;
+
+  std::string frameName = "FL_calf_joint";
+  raisim::Vec<3> lin_vel, ang_vel, lin_acc, ang_acc;
+  aliengo->getFrameVelocity(frameName,lin_vel);
+  aliengo->getFrameAngularVelocity(frameName,ang_vel);
+
+//    std::cout<< "Linear Velocity : "<< lin_vel.e().transpose()<< std::endl;
+//    std::cout<< "Angular Velocity : "<< ang_vel.e().transpose()<< std::endl;
+
+
+  std::cout<< ((getNonlinearities(gc, gv) - aliengo->getNonlinearities({0,0,-9.81}).e())).transpose() <<std::endl;
+//  std::cout<<"my nonlinearities is  \n"<<getNonlinearities(gc, gv).transpose()<<std::endl;
+//  std::cout<<"nonlinearities should be \n"<< aliengo->getNonlinearities({0,0,-9.81}).e().transpose()<<std::endl;
 
   if((getNonlinearities(gc, gv) - aliengo->getNonlinearities({0,0,-9.81}).e()).norm() < 1e-8)
     std::cout<<"passed "<<std::endl;
   else
     std::cout<<"failed "<<std::endl;
 
+//  std::cout<< "\n"<< std::endl;
+//  aliengo->getFrameAcceleration(frameName,lin_acc);
+//  std::cout<< "Linear Acceleration : "<< lin_acc.e().transpose()<< std::endl;
   return 0;
 }
