@@ -3,6 +3,7 @@
 //
 
 #include "raisim/RaisimServer.hpp"
+//#include "exercise4_forOneLeg.hpp"
 #include "exercise4_STUDENTID.hpp"
 
 #define _MAKE_STR(x) __MAKE_STR(x)
@@ -27,6 +28,8 @@ int main(int argc, char* argv[]) {
   world.integrate1();
   aliengo->getMassMatrix();
 
+//  std::cout<< ((getNonlinearities(gc, gv) - aliengo->getNonlinearities({0,0,-9.81}).e())).transpose() <<std::endl;
+  std::cout<<"my nonlinearities is  \n"<<getNonlinearities(gc, gv).transpose()<<std::endl;
   std::cout<<"nonlinearities should be \n"<< aliengo->getNonlinearities({0,0,-9.81}).e().transpose()<<std::endl;
 
   if((getNonlinearities(gc, gv) - aliengo->getNonlinearities({0,0,-9.81}).e()).norm() < 1e-8)
