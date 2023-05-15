@@ -39,9 +39,9 @@ int main(int argc, char* argv[]) {
 //    std::cout<< "Angular Velocity : "<< ang_vel.e().transpose()<< std::endl;
 
 
-  std::cout<< ((getNonlinearities(gc, gv) - aliengo->getNonlinearities({0,0,-9.81}).e())).transpose() <<std::endl;
+//  std::cout<< ((getNonlinearities(gc, gv) - aliengo->getNonlinearities({0,0,-9.81}).e())).transpose() <<std::endl;
 //  std::cout<<"my nonlinearities is  \n"<<getNonlinearities(gc, gv).transpose()<<std::endl;
-//  std::cout<<"nonlinearities should be \n"<< aliengo->getNonlinearities({0,0,-9.81}).e().transpose()<<std::endl;
+  std::cout<<"nonlinearities should be \n"<< aliengo->getNonlinearities({0,0,-9.81}).e().transpose()<<std::endl;
 
   if((getNonlinearities(gc, gv) - aliengo->getNonlinearities({0,0,-9.81}).e()).norm() < 1e-8)
     std::cout<<"passed "<<std::endl;

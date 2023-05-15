@@ -326,7 +326,7 @@ public:
       for (int i = 3*leg+3; i > 3*leg; i--) {
         acc << bodies_[i].joint_.jointLinAcc_W_, bodies_[i].joint_.jointAngAcc_W_;
         // 아래 wrench는 링크의 pos.cross(LinearForce) -> bec, 토크는 거리에 따라 바뀌기 때문([i+1]joint에 작용하는걸로 봄, 꼬다리쪽)
-        wrench.tail(3) += skewSymMat(bodies_[i].joint_.jointRot_W_ * bodies_[i+1].joint_.jointPos_B_)*wrench.head(3);
+        wrench.tail(3) += skewSymMat(bodies_[i+1].joint_.jointPos_W_ - bodies_[i].joint_.jointPos_W_)*wrench.head(3);
         wrench += getSpatialInertiaMatrix(bodies_[i])*acc + getFictitiousForces(bodies_[i]); // 윗 식이랑 순서 중요함 .head(3)때문
         b[i+5] = bodies_[i].joint_.S.transpose() * wrench;  // Transmitted Generalized Force
       }
@@ -334,10 +334,10 @@ public:
     }
     acc << bodies_[0].joint_.jointLinAcc_W_, bodies_[0].joint_.jointAngAcc_W_;
     wrench = temporary[0] + temporary[1] + temporary[2] + temporary[3];
-    wrench.tail(3) += skewSymMat(bodies_[0].joint_.jointRot_W_ * bodies_[10].joint_.jointPos_B_)*temporary[0].head(3);
-    wrench.tail(3) += skewSymMat(bodies_[0].joint_.jointRot_W_ * bodies_[7].joint_.jointPos_B_)*temporary[1].head(3);
-    wrench.tail(3) += skewSymMat(bodies_[0].joint_.jointRot_W_ * bodies_[4].joint_.jointPos_B_)*temporary[2].head(3);
-    wrench.tail(3) += skewSymMat(bodies_[0].joint_.jointRot_W_ * bodies_[1].joint_.jointPos_B_)*temporary[3].head(3);
+    wrench.tail(3) += skewSymMat(bodies_[10].joint_.jointPos_W_ - bodies_[0].joint_.jointPos_W_)*temporary[0].head(3);
+    wrench.tail(3) += skewSymMat(bodies_[7].joint_.jointPos_W_ - bodies_[0].joint_.jointPos_W_)*temporary[1].head(3);
+    wrench.tail(3) += skewSymMat(bodies_[4].joint_.jointPos_W_ - bodies_[0].joint_.jointPos_W_)*temporary[2].head(3);
+    wrench.tail(3) += skewSymMat(bodies_[1].joint_.jointPos_W_ - bodies_[0].joint_.jointPos_W_)*temporary[3].head(3);
     wrench += getSpatialInertiaMatrix(bodies_[0])*acc + getFictitiousForces(bodies_[0]);
     b.head(6) = Eigen::MatrixXd::Identity(6,6).transpose() * wrench;
 
