@@ -221,7 +221,7 @@ public:
           bodies_[i].joint_.jointLinAcc_W_ =
               bodies_[bodies_[i].parent_].joint_.jointLinAcc_W_ + parent_alpha * RelativePos_W_ + parent_omega * parent_omega * RelativePos_W_;
           bodies_[i].joint_.jointAngAcc_W_ = bodies_[bodies_[i].parent_].joint_.jointAngAcc_W_ +
-                                             parent_omega * bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_ * gv_[i + 5];
+                                             parent_omega * bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_ * gv_[i + 5];
           bodies_[i].joint_.S_dot.tail(3) =
               parent_omega * bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_;
           break;
