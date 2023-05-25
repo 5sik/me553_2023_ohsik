@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
   aliengo->setComputeInverseDynamics(true);
 
 
-  std::string frameName = "FL_calf_joint";
+  std::string frameName = "floating_base";
   raisim::Vec<3> lin_vel, ang_vel, lin_acc, ang_acc;
   aliengo->getFrameVelocity(frameName,lin_vel);
   aliengo->getFrameAngularVelocity(frameName,ang_vel);
@@ -47,8 +47,8 @@ int main(int argc, char* argv[]) {
   else
     std::cout<<"failed "<<std::endl;
 
-//  std::cout<< "\n"<< std::endl;
-//  aliengo->getFrameAcceleration(frameName,lin_acc);
-//  std::cout<< "Linear Acceleration : "<< lin_acc.e().transpose()<< std::endl;
+  std::cout<< "\n"<< std::endl;
+  aliengo->getFrameAcceleration(frameName,lin_acc);
+  std::cout<< "Linear Acceleration : "<< lin_acc.e().transpose()<< std::endl;
   return 0;
 }
