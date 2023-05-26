@@ -179,9 +179,10 @@ class ArticulatedSystem {
 public:
   ArticulatedSystem(std::vector<Body> bodies) { bodies_ = bodies; }
 
-  void computeForwardKinematics(const Eigen::VectorXd &gc, const Eigen::VectorXd &gv) {
+  void computeForwardKinematics(const Eigen::VectorXd &gc, const Eigen::VectorXd &gv, const Eigen::VectorXd &gf) {
     gc_ = gc;
     gv_ = gv;
+    gf_ = gf;
     Eigen::Matrix3d rotMat; // temporary variable to save the matrix
     Eigen::Matrix3d parent_omega = Eigen::Matrix3d::Zero(); // Angular Velocity of parent joint
     Eigen::Matrix3d parent_alpha = Eigen::Matrix3d::Zero(); // Angular Acceleration of parent joint
@@ -382,11 +383,13 @@ public:
         M_temp = X_ * M_arti *
                  (-S_ * (S_.transpose() * M_arti * S_).inverse() * (S_.transpose() * M_arti * X_.transpose()) + X_.transpose());
         b_temp = X_ * (M_arti * (S_ * (S_.transpose() * M_arti * S_).inverse() *
-                                 (-S_.transpose() * M_arti * (S_dot_ * gv_[i + 5] + X_dot_.transpose() * W_)
+                                 (gf_[i+5]-S_.transpose() * M_arti * (S_dot_ * gv_[i + 5] + X_dot_.transpose() * W_)
                                   - S_.transpose() * b_arti) + S_dot_ * gv_[i + 5] + X_dot_.transpose() * W_) + b_arti);
         if (i>3*leg+1){
           bodies_[bodies_[i].parent_].articulated_M = getSpatialInertiaMatrix(bodies_[bodies_[i].parent_]) + M_temp;
+//          std::cout<<"M "<<bodies_[i].parent_<<" : \n"<<bodies_[bodies_[i].parent_].articulated_M<<std::endl;
           bodies_[bodies_[i].parent_].articulated_b = getFictitiousForces(bodies_[bodies_[i].parent_]) + b_temp;
+//          std::cout<<"b"<<bodies_[i].parent_<<" : \n"<<bodies_[bodies_[i].parent_].articulated_b.transpose()<<std::endl;
         }
       }
       M_buffer.push_back(M_temp);
@@ -395,7 +398,7 @@ public:
     bodies_[0].articulated_M = getSpatialInertiaMatrix(bodies_[0]) + M_buffer[0]+ M_buffer[1]+ M_buffer[2]+ M_buffer[3];
     std::cout<<"Trunk Arti_Mass : \n"<<bodies_[0].articulated_M<<std::endl;
     bodies_[0].articulated_b = getFictitiousForces(bodies_[0]) + b_buffer[0]+ b_buffer[1]+ b_buffer[2]+ b_buffer[3];
-    std::cout<<"Trunk Arti_b : \n"<<bodies_[0].articulated_b.transpose()<<std::endl;
+//    std::cout<<"Trunk Arti_b : \n"<<bodies_[0].articulated_b.transpose()<<std::endl;
   }
 
   Eigen::VectorXd computeGeneralizedAcceleration(){
@@ -410,7 +413,7 @@ public:
     Eigen::MatrixXd S_dot_trunk = bodies_[0].joint_.S_dot_trunk;
 
     ga_.head(6) = (S_trunk.transpose()*bodies_[0].articulated_M*S_trunk).inverse()
-          *(-S_trunk.transpose()*bodies_[0].articulated_M*(S_trunk*bodies_[0].joint_.W_dot)
+          *(gf_.head(6)-S_trunk.transpose()*bodies_[0].articulated_M*(S_trunk*bodies_[0].joint_.W_dot)
               -S_trunk.transpose()*bodies_[0].articulated_b);
     bodies_[0].joint_.W_dot = bodies_[0].joint_.S_trunk*ga_.head(6)+bodies_[0].X_BP.transpose()*bodies_[0].joint_.W_dot;
 
@@ -424,8 +427,10 @@ public:
         X_dot_ = bodies_[i].X_BP_dot;
         W_ = bodies_[bodies_[i].parent_].joint_.W;
         W_dot_ = bodies_[bodies_[i].parent_].joint_.W_dot;
+        Eigen::VectorXd temp = Eigen::VectorXd::Ones(1);
+
         ga_[i+5] = (S_.transpose()*M_arti*S_).inverse()*
-                   (-S_.transpose()*M_arti*(S_dot_*gv_[i+5]+X_dot_.transpose()*W_+X_.transpose()*W_dot_)-S_.transpose()*b_arti);
+                   (temp*gf_[i+5]-S_.transpose()*M_arti*(S_dot_*gv_[i+5]+X_dot_.transpose()*W_+X_.transpose()*W_dot_)-S_.transpose()*b_arti) ;
         bodies_[i].joint_.W_dot = S_*ga_[i+5]+S_dot_*gv_[i+5]+X_dot_.transpose()*W_+X_.transpose()*W_dot_;
       }
     }
@@ -437,6 +442,7 @@ private:
   std::vector<Body> bodies_;
   Eigen::VectorXd gc_;
   Eigen::VectorXd gv_;
+  Eigen::VectorXd gf_;
 
 };
 
@@ -549,7 +555,7 @@ inline Eigen::VectorXd computeGeneralizedAcceleration (const Eigen::VectorXd& gc
   bodies.push_back(getCompositeBody(RL_calf, RL_foot, 0));
 
   ArticulatedSystem railab(bodies);
-  railab.computeForwardKinematics(gc, gv);
+  railab.computeForwardKinematics(gc, gv, gf);
   railab.computeArticulatedVariable();
 
 
