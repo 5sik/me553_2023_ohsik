@@ -393,7 +393,9 @@ public:
       b_buffer.push_back(b_temp);
     }
     bodies_[0].articulated_M = getSpatialInertiaMatrix(bodies_[0]) + M_buffer[0]+ M_buffer[1]+ M_buffer[2]+ M_buffer[3];
+    std::cout<<"Trunk Arti_Mass : \n"<<bodies_[0].articulated_M<<std::endl;
     bodies_[0].articulated_b = getFictitiousForces(bodies_[0]) + b_buffer[0]+ b_buffer[1]+ b_buffer[2]+ b_buffer[3];
+    std::cout<<"Trunk Arti_b : \n"<<bodies_[0].articulated_b.transpose()<<std::endl;
   }
 
   Eigen::VectorXd computeGeneralizedAcceleration(){
