@@ -387,18 +387,14 @@ public:
                                   - S_.transpose() * b_arti) + S_dot_ * gv_[i + 5] + X_dot_.transpose() * W_) + b_arti);
         if (i>3*leg+1){
           bodies_[bodies_[i].parent_].articulated_M = getSpatialInertiaMatrix(bodies_[bodies_[i].parent_]) + M_temp;
-//          std::cout<<"M "<<bodies_[i].parent_<<" : \n"<<bodies_[bodies_[i].parent_].articulated_M<<std::endl;
           bodies_[bodies_[i].parent_].articulated_b = getFictitiousForces(bodies_[bodies_[i].parent_]) + b_temp;
-//          std::cout<<"b"<<bodies_[i].parent_<<" : \n"<<bodies_[bodies_[i].parent_].articulated_b.transpose()<<std::endl;
         }
       }
       M_buffer.push_back(M_temp);
       b_buffer.push_back(b_temp);
     }
     bodies_[0].articulated_M = getSpatialInertiaMatrix(bodies_[0]) + M_buffer[0]+ M_buffer[1]+ M_buffer[2]+ M_buffer[3];
-    std::cout<<"Trunk Arti_Mass : \n"<<bodies_[0].articulated_M<<std::endl;
     bodies_[0].articulated_b = getFictitiousForces(bodies_[0]) + b_buffer[0]+ b_buffer[1]+ b_buffer[2]+ b_buffer[3];
-//    std::cout<<"Trunk Arti_b : \n"<<bodies_[0].articulated_b.transpose()<<std::endl;
   }
 
   Eigen::VectorXd computeGeneralizedAcceleration(){
@@ -407,8 +403,6 @@ public:
     Eigen::MatrixXd X_;    Eigen::MatrixXd X_dot_;
     Eigen::VectorXd W_;    Eigen::VectorXd W_dot_; // W_dot_ is each joint linear & Angular Acceleration w.r.t world frame
     Eigen::VectorXd ga_ = Eigen::VectorXd::Zero(18);; // ga is gerneralized acceleration
-//    Eigen::VectorXd Tau = Eigen::VectorXd::Zero(1) ; // if external force is exist except gravity force , it isn't zero
-//    Eigen::VectorXd Tau_ = Eigen::VectorXd::Zero(6); // for Trunk Body
     Eigen::MatrixXd S_trunk = bodies_[0].joint_.S_trunk;
     Eigen::MatrixXd S_dot_trunk = bodies_[0].joint_.S_dot_trunk;
 
@@ -427,8 +421,7 @@ public:
         X_dot_ = bodies_[i].X_BP_dot;
         W_ = bodies_[bodies_[i].parent_].joint_.W;
         W_dot_ = bodies_[bodies_[i].parent_].joint_.W_dot;
-        Eigen::VectorXd temp = Eigen::VectorXd::Ones(1);
-
+        Eigen::VectorXd temp = Eigen::VectorXd::Ones(1); // for make the matrix format
         ga_[i+5] = (S_.transpose()*M_arti*S_).inverse()*
                    (temp*gf_[i+5]-S_.transpose()*M_arti*(S_dot_*gv_[i+5]+X_dot_.transpose()*W_+X_.transpose()*W_dot_)-S_.transpose()*b_arti) ;
         bodies_[i].joint_.W_dot = S_*ga_[i+5]+S_dot_*gv_[i+5]+X_dot_.transpose()*W_+X_.transpose()*W_dot_;
@@ -436,7 +429,6 @@ public:
     }
     return ga_;
   }
-
 
 private:
   std::vector<Body> bodies_;
