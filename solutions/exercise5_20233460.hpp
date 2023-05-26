@@ -195,13 +195,11 @@ public:
         case (Body::Joint::Type::floating) :
           bodies_[i].joint_.jointPos_W_ = gc_.head(3);
           bodies_[i].joint_.jointRot_W_ = QtoR(gc.segment(3, 4));
-          bodies_[i].joint_.S_trunk.topLeftCorner(3,3) = QtoR(gc.segment(3, 4));
-          bodies_[i].joint_.S_trunk.bottomRightCorner(3,3) = QtoR(gc.segment(3, 4));
+          bodies_[i].joint_.S_trunk = Eigen::MatrixXd::Identity(6,6);
+          bodies_[i].X_BP.setIdentity(6,6);
           bodies_[i].joint_.jointLinVel_W_ = gv_.head(3) ;
           bodies_[i].joint_.jointAngVel_W_ = gv_.segment(3, 3);
           bodies_[i].joint_.W << bodies_[i].joint_.jointLinVel_W_ , bodies_[i].joint_.jointAngVel_W_;
-//          bodies_[i].joint_.S_dot_trunk.topLeftCorner(3,3) = skewSymMat(bodies_[i].joint_.jointAngVel_W_)*QtoR(gc.segment(3, 4));
-//          bodies_[i].joint_.S_dot_trunk.bottomRightCorner(3,3) = skewSymMat(bodies_[i].joint_.jointAngVel_W_)*QtoR(gc.segment(3, 4));
           bodies_[i].joint_.S_dot_trunk = Eigen::MatrixXd::Zero(6,6);
           bodies_[i].joint_.jointLinAcc_W_ = Eigen::Vector3d {0,0,9.81};
           bodies_[i].joint_.jointAngAcc_W_.setZero();
@@ -228,23 +226,22 @@ public:
           bodies_[i].joint_.jointRot_W_ =
               bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointRot_B_
               * RotM(bodies_[i].joint_.jointAxis_B_(0) == 1 ? "x" : bodies_[i].joint_.jointAxis_B_(1) == 1 ? "y" : "z",gc_[i + 6]);
-          bodies_[i].joint_.S.tail(3) = bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_;
+          bodies_[i].joint_.S.tail(3) = bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_;
           bodies_[i].X_BP.setIdentity(6,6);
           bodies_[i].X_BP.bottomLeftCorner(3,3) = skewSymMat(bodies_[i].joint_.jointPos_W_-bodies_[bodies_[i].parent_].joint_.jointPos_W_);
           bodies_[i].joint_.jointLinVel_W_ =
               bodies_[bodies_[i].parent_].joint_.jointLinVel_W_ + parent_omega * RelativePos_W_;
           bodies_[i].joint_.jointAngVel_W_ = bodies_[bodies_[i].parent_].joint_.jointAngVel_W_ +
-                                             bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_ * gv_[i + 5];
+                                             bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_ * gv_[i + 5];
           bodies_[i].joint_.W << bodies_[i].joint_.jointLinVel_W_ , bodies_[i].joint_.jointAngVel_W_;
           bodies_[i].X_BP_dot.setZero(6,6);
           bodies_[i].X_BP_dot.bottomLeftCorner(3,3) = skewSymMat(bodies_[i].joint_.jointLinVel_W_ - bodies_[bodies_[i].parent_].joint_.jointLinVel_W_);
           bodies_[i].joint_.jointLinAcc_W_ =
               bodies_[bodies_[i].parent_].joint_.jointLinAcc_W_ + parent_alpha * RelativePos_W_ + parent_omega * parent_omega * RelativePos_W_;
           bodies_[i].joint_.jointAngAcc_W_ = bodies_[bodies_[i].parent_].joint_.jointAngAcc_W_ +
-                                             parent_omega * bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_ * gv_[i + 5];
+                     parent_omega * bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[bodies_[i].parent_].joint_.jointAxis_B_ * gv_[i + 5];
           bodies_[i].joint_.S_dot.tail(3) =
-              parent_omega * bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_;
-//          bodies_[i].joint_.W_dot << bodies_[i].joint_.jointLinAcc_W_ , bodies_[i].joint_.jointAngAcc_W_;
+                     parent_omega * bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_;
           break;
         case (Body::Joint::Type::prismatic) :
           bodies_[i].joint_.jointPos_W_ = bodies_[bodies_[i].parent_].joint_.jointPos_W_ +
@@ -252,7 +249,7 @@ public:
           bodies_[i].joint_.jointRot_W_ =
               bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointRot_B_ *
               Eigen::Matrix3d::Identity(); // 마지막은 prismatic이니까 Identity matrix
-          bodies_[i].joint_.S.head(3) = bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_;
+          bodies_[i].joint_.S.head(3) = bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_;
           bodies_[i].X_BP.setIdentity(6,6);
           bodies_[i].X_BP.bottomLeftCorner(3,3) = skewSymMat(bodies_[i].joint_.jointPos_W_-bodies_[bodies_[i].parent_].joint_.jointPos_W_);
           bodies_[i].joint_.jointLinVel_W_ = bodies_[bodies_[i].parent_].joint_.jointLinVel_W_
@@ -267,8 +264,7 @@ public:
                                              + 2* parent_omega * bodies_[bodies_[i].parent_].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_ * gv_[i + 5];
           bodies_[i].joint_.jointAngAcc_W_ = bodies_[bodies_[i].parent_].joint_.jointAngAcc_W_;
           bodies_[i].joint_.S_dot.head(3) =
-              parent_omega * bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_;
-//          bodies_[i].joint_.W_dot << bodies_[i].joint_.jointLinAcc_W_ , bodies_[i].joint_.jointAngAcc_W_;
+              skewSymMat(bodies_[i].joint_.jointAngVel_W_) * bodies_[i].joint_.jointRot_W_ * bodies_[i].joint_.jointAxis_B_;
           break;
       }
       bodies_[i].comPos_W_ = bodies_[i].joint_.jointRot_W_ * bodies_[i].comPos_B_;
@@ -411,10 +407,11 @@ public:
     Eigen::MatrixXd S_trunk = bodies_[0].joint_.S_trunk;
     Eigen::MatrixXd S_dot_trunk = bodies_[0].joint_.S_dot_trunk;
 
-    ga_.head(6) =
-        (S_trunk.transpose()*bodies_[0].articulated_M*S_trunk).inverse()
-        *(-S_trunk.transpose()*bodies_[0].articulated_M*(S_dot_trunk*gv_.head(6)+Eigen::MatrixXd::Identity(6,6)*bodies_[0].joint_.W_dot)
-        -S_trunk.transpose()*bodies_[0].articulated_b);
+    ga_.head(6) = (S_trunk.transpose()*bodies_[0].articulated_M*S_trunk).inverse()
+          *(-S_trunk.transpose()*bodies_[0].articulated_M*(S_trunk*bodies_[0].joint_.W_dot)
+              -S_trunk.transpose()*bodies_[0].articulated_b);
+    bodies_[0].joint_.W_dot = bodies_[0].joint_.S_trunk*ga_.head(6)+bodies_[0].X_BP.transpose()*bodies_[0].joint_.W_dot;
+
     for (int leg=0; leg<4; leg++){
       for (int i=3*leg+1; i<3*leg+4; i++){
         M_arti = bodies_[i].articulated_M;
@@ -427,7 +424,7 @@ public:
         W_dot_ = bodies_[bodies_[i].parent_].joint_.W_dot;
         ga_[i+5] = (S_.transpose()*M_arti*S_).inverse()*
                    (-S_.transpose()*M_arti*(S_dot_*gv_[i+5]+X_dot_.transpose()*W_+X_.transpose()*W_dot_)-S_.transpose()*b_arti);
-        bodies_[i].joint_.W_dot = S_*ga_[i+5]+S_dot_*gv_[i+5]+X_dot_*W_+X_*W_dot_;
+        bodies_[i].joint_.W_dot = S_*ga_[i+5]+S_dot_*gv_[i+5]+X_dot_.transpose()*W_+X_.transpose()*W_dot_;
       }
     }
     return ga_;
