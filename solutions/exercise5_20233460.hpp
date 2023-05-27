@@ -219,7 +219,6 @@ public:
               bodies_[bodies_[i].parent_].joint_.jointLinAcc_W_ + parent_alpha * RelativePos_W_ +
               parent_omega * parent_omega * RelativePos_W_;
           bodies_[i].joint_.jointAngAcc_W_ = bodies_[bodies_[i].parent_].joint_.jointAngAcc_W_;
-          bodies_[i].joint_.W_dot << bodies_[i].joint_.jointLinAcc_W_ , bodies_[i].joint_.jointAngAcc_W_;
           break;
         case (Body::Joint::Type::revolute) :
           bodies_[i].joint_.jointPos_W_ = //bodies_[bodies_[i].parent_].joint_.jointPos_W_ + RelativePos_W_;
@@ -363,7 +362,6 @@ public:
     Eigen::VectorXd W_;
     Eigen::VectorXd S_;    Eigen::VectorXd S_dot_;
     Eigen::MatrixXd X_;    Eigen::MatrixXd X_dot_;
-//    double Tau = 0 ; // if external force is exist except gravity force , it isn't zero
     std::vector<Eigen::MatrixXd> M_buffer;
     std::vector<Eigen::VectorXd> b_buffer;
     Eigen::MatrixXd M_temp = Eigen::MatrixXd::Zero(6,6);
@@ -401,7 +399,7 @@ public:
     Eigen::MatrixXd M_arti;    Eigen::VectorXd b_arti;
     Eigen::VectorXd S_;    Eigen::VectorXd S_dot_;
     Eigen::MatrixXd X_;    Eigen::MatrixXd X_dot_;
-    Eigen::VectorXd W_;    Eigen::VectorXd W_dot_; // W_dot_ is each joint linear & Angular Acceleration w.r.t world frame
+    Eigen::VectorXd W_;    Eigen::VectorXd W_dot_; // W_dot_ is each joint linear & Angular Acceleration of the Articulated bodies w.r.t world frame
     Eigen::VectorXd ga_ = Eigen::VectorXd::Zero(18);; // ga is gerneralized acceleration
     Eigen::MatrixXd S_trunk = bodies_[0].joint_.S_trunk;
     Eigen::MatrixXd S_dot_trunk = bodies_[0].joint_.S_dot_trunk;
@@ -421,7 +419,7 @@ public:
         X_dot_ = bodies_[i].X_BP_dot;
         W_ = bodies_[bodies_[i].parent_].joint_.W;
         W_dot_ = bodies_[bodies_[i].parent_].joint_.W_dot;
-        Eigen::VectorXd temp = Eigen::VectorXd::Ones(1); // for make the matrix format
+        Eigen::VectorXd temp = Eigen::VectorXd::Ones(1); // for making double format the matrix format
         ga_[i+5] = (S_.transpose()*M_arti*S_).inverse()*
                    (temp*gf_[i+5]-S_.transpose()*M_arti*(S_dot_*gv_[i+5]+X_dot_.transpose()*W_+X_.transpose()*W_dot_)-S_.transpose()*b_arti) ;
         bodies_[i].joint_.W_dot = S_*ga_[i+5]+S_dot_*gv_[i+5]+X_dot_.transpose()*W_+X_.transpose()*W_dot_;
