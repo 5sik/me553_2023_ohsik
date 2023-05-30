@@ -405,7 +405,7 @@ public:
     Eigen::MatrixXd S_dot_trunk = bodies_[0].joint_.S_dot_trunk;
 
     ga_.head(6) = (S_trunk.transpose()*bodies_[0].articulated_M*S_trunk).inverse()
-          *(gf_.head(6)-S_trunk.transpose()*bodies_[0].articulated_M*(S_trunk*bodies_[0].joint_.W_dot)
+          *(gf_.head(6)-S_trunk.transpose()*bodies_[0].articulated_M*(bodies_[0].X_BP.transpose()*bodies_[0].joint_.W_dot)
               -S_trunk.transpose()*bodies_[0].articulated_b);
     bodies_[0].joint_.W_dot = bodies_[0].joint_.S_trunk*ga_.head(6)+bodies_[0].X_BP.transpose()*bodies_[0].joint_.W_dot;
 
