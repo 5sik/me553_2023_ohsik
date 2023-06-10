@@ -5,6 +5,7 @@
 #include "raisim/RaisimServer.hpp"
 #include "raisim/World.hpp"
 #include "exercise3_20233460.hpp"
+//#include "exercise3_forOneLeg.hpp"
 //#include "exercise3_20233460(hardcoding).hpp"
 //#include "test.hpp"
 //#include "test_mass.hpp"
@@ -40,11 +41,12 @@ int main(int argc, char* argv[]) {
 //  std::cout<< "pos : "<< footPosition.e().transpose()<< std::endl;
 
 
-  std::cout<<"mass matrix which I found is \n"<< getMassMatrix(gc) <<std::endl;
-//
-//  std::cout<<"mass matrix should be \n"<< aliengo->getMassMatrix().e()<<std::endl;
+//  std::cout<<"mass matrix which I found is \n"<< getMassMatrix(gc) <<std::endl;
+
+  std::cout<<"mass matrix should be \n"<< aliengo->getMassMatrix().e()<<std::endl;
+//  std::cout<<"inverse mass matrix should be \n"<< aliengo->getMassMatrix().e().inverse()<<std::endl;
 //  std::cout<<"\n"<<"----------------------------"<<std::endl;
-  std::cout<<"delta : "<<std::endl<<(getMassMatrix(gc) - aliengo->getMassMatrix().e())<<std::endl;
+//  std::cout<<"delta : "<<std::endl<<(getMassMatrix(gc) - aliengo->getMassMatrix().e())<<std::endl;
 
   if((getMassMatrix(gc) - aliengo->getMassMatrix().e()).norm() < 1e-8)
     std::cout<<"passed "<<std::endl;

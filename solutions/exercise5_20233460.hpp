@@ -42,7 +42,7 @@ inline Eigen::Matrix3d skewSymMat(const Eigen::Vector3d &vec) {
   return mat;
 }
 
-///// Make the Inertia Matrix using the half of the entries
+///// Make the Inertia Matrix by using the half of the entries
 inline Eigen::Matrix3d GetInertiaMatrix(double ixx, double ixy, double ixz, double iyy, double iyz, double izz) {
   Eigen::Matrix3d I;
   I << ixx, ixy, ixz, ixy, iyy, iyz, ixz, iyz, izz;
@@ -547,7 +547,6 @@ inline Eigen::VectorXd computeGeneralizedAcceleration (const Eigen::VectorXd& gc
   ArticulatedSystem railab(bodies);
   railab.computeForwardKinematics(gc, gv, gf);
   railab.computeArticulatedVariable();
-
 
   return railab.computeGeneralizedAcceleration();
 }

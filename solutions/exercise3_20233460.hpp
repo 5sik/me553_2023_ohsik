@@ -366,6 +366,5 @@ inline Eigen::MatrixXd getMassMatrix(const Eigen::VectorXd &gc) {
 //  }
 
 
-
   return railab.getMassMatrix();
 }
