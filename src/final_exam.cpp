@@ -3,7 +3,7 @@
 //
 
 #include "raisim/RaisimServer.hpp"
-#include "finalexam_STUDENTID.hpp"
+#include "finalexam_20233460.hpp"
 
 #define _MAKE_STR(x) __MAKE_STR(x)
 #define __MAKE_STR(x) #x
@@ -20,9 +20,12 @@ int main(int argc, char* argv[]) {
 
   // kinova configuration
   Eigen::VectorXd gc(robotArm->getGeneralizedCoordinateDim()), gv(robotArm->getDOF()), gf(robotArm->getDOF());
-  gc << 0.1, 0.2, 0.3; /// Jemin: I'll randomize the gc, gv, gf when grading
-  gv << 0.1, 0.2, 0.3;
-  gf << 0.15, 0.21, 0.36;
+  gc << 0.3, 0.5, 0.8; /// Jemin: I'll randomize the gc, gv, gf when grading
+  gv << 0.561, 0.12, 0.01;
+  gf << 0.879, 0.99, 0.45;
+//  gc << 0.18, 0.28, 0.38; /// Jemin: I'll randomize the gc, gv, gf when grading
+//  gv << 0.17, 0.27, 0.3;
+//  gf << 0.15, 0.21, 0.36;
   robotArm->setState(gc, gv);
   robotArm->setGeneralizedForce(gf);
 
@@ -33,6 +36,8 @@ int main(int argc, char* argv[]) {
   massMatrix = robotArm->getMassMatrix().e();
   nonlinearity = robotArm->getNonlinearities({0,0,-9.81}).e();
 
+//  std::cout<< massMatrix.inverse() * (gf-nonlinearity) << std::endl;
+  std::cout<< "delta : \n" << ((computeGeneralizedAcceleration(gc, gv, gf) - massMatrix.inverse() * (gf-nonlinearity))).transpose() << std::endl;
   if((computeGeneralizedAcceleration(gc, gv, gf) - massMatrix.inverse() * (gf-nonlinearity)).norm() < 1e-8)
     std::cout<<"passed "<<std::endl;
   else
