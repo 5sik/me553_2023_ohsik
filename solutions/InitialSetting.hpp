@@ -208,7 +208,7 @@ public:
           break;
         case (Body::Joint::Type::fixed) :
           bodies_[i].joint_.jointPos_W_.setZero();
-          bodies_[i].joint_.jointRot_W_.setZero();
+          bodies_[i].joint_.jointRot_W_.setIdentity(3,3);
           bodies_[i].joint_.S_trunk = Eigen::MatrixXd::Zero(6,6); // Trunk = Base Frame
           bodies_[i].X_BP.setIdentity(6,6);
           bodies_[i].joint_.jointLinVel_W_.setZero();
