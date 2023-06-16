@@ -290,8 +290,6 @@ public:
 
       bodies_[bodies_[i].parent_].articulated_M = getSpatialInertiaMatrix(bodies_[bodies_[i].parent_]) + M_temp;
       bodies_[bodies_[i].parent_].articulated_b = getFictitiousForces(bodies_[bodies_[i].parent_]) + b_temp;
-      std::cout<< "bodies_["<<bodies_[i].parent_<<"_M] \n"<< bodies_[bodies_[i].parent_].articulated_M <<std::endl;
-      std::cout<< "bodies_["<<bodies_[i].parent_<<"_b] \n"<< bodies_[bodies_[i].parent_].articulated_b.transpose() <<std::endl;
     }
   }
 
